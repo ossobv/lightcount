@@ -1,6 +1,23 @@
-/* vim: set ts=8 sw=4 sts=4 noet: */
-/* NOTE: Raise SIGUSR1 when you want it to switch memory.
- * NOTE: Its your job to put the interfaces in promiscuous mode. */
+/* vim: set ts=8 sw=4 sts=4 noet: 
+========================================================================
+This file is part of LightCount.
+
+LightCount is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+LightCount is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
+========================================================================
+NOTE: Raise SIGUSR1 when you want it to switch memory.
+NOTE: Its your job to put the interfaces in promiscuous mode.
+*/
 #include "lightcount.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -20,6 +37,8 @@
 #  define _BIG_ENDIAN
 # elif __BYTE_ORDER == __LITTLE_ENDIAN
 #  define _LITTLE_ENDIAN
+# else
+#  error Byte order undefined
 # endif
 #endif
 
@@ -32,8 +51,6 @@
 # define ETH_P_ALL 0x0003   /* all frames */
 # define ETH_P_IP 0x0800    /* IP frames */
 # define ETH_P_8021Q 0x8100 /* 802.1q vlan frames */
-#else
-# error Byte order undefined
 #endif
 
 
@@ -180,8 +197,6 @@ void sniff_loop(int packet_socket, void *memory1, void *memory2) {
 		memory_add(sniff__memp, ntohl(ipq->src), ntohl(ipq->dst), ntohs(ether->vid << 4), ntohs(ipq->len) + 22);
 #elif defined(_BIG_ENDIAN)
 		memory_add(sniff__memp, ntohl(ipq->src), ntohl(ipq->dst), ntohs(ether->vid), ntohs(ipq->len) + 22);
-#else
-		assert(0);
 #endif
 	    }
     	}

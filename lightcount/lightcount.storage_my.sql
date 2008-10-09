@@ -1,3 +1,5 @@
+-- MySQL lightcount SQL create script
+
 DROP TABLE IF EXISTS node_tbl;
 CREATE TABLE node_tbl (
 	node_id INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
@@ -13,10 +15,9 @@ CREATE TABLE ip_range_tbl (
 );
 INSERT INTO ip_range_tbl VALUES (INET_ATON('0.0.0.0'), INET_ATON('255.255.255.255'), NULL);
 
-DROP TABLE IF EXISTS count_tbl;
-CREATE TABLE count_tbl (
-	count_id INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
-	-- unixtime stores time when measurement begins (interval is defined in timer module)
+DROP TABLE IF EXISTS sample_tbl;
+CREATE TABLE sample_tbl (
+	-- unixtime holds measurement-start-time (interval is defined in timer module)
 	unixtime INT NOT NULL,
 	node_id INT NOT NULL REFERENCES node_tbl (node_id),
 	vlan_id INT NOT NULL,
@@ -24,5 +25,6 @@ CREATE TABLE count_tbl (
 	in_pps INT UNSIGNED NOT NULL, -- packets/second in
 	in_bps BIGINT UNSIGNED NOT NULL, -- bytes/second in
 	out_pps INT UNSIGNED NOT NULL, -- packets/second out
-	out_bps BIGINT UNSIGNED NOT NULL -- bytes/second out
+	out_bps BIGINT UNSIGNED NOT NULL, -- bytes/second out
+	PRIMARY KEY (unixtime, node_id, vlan_id, ip)
 );

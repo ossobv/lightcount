@@ -1,4 +1,21 @@
-/* vim: set ts=8 sw=4 sts=4 noet: */
+/* vim: set ts=8 sw=4 sts=4 noet: 
+========================================================================
+This file is part of LightCount.
+
+LightCount is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+LightCount is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
+========================================================================
+*/
 #include "lightcount.h"
 #include <sys/time.h>
 #include <pthread.h>
@@ -9,7 +26,7 @@
 #include <unistd.h>
 
 /* Settings */
-#define INTERVAL_SECONDS 300	/* run the storage engine every N seconds */
+#define INTERVAL_SECONDS 300		/* run the storage engine every N seconds */
 
 
 static pthread_t timer__thread;

@@ -1,4 +1,21 @@
-/* vim: set ts=8 sw=4 sts=4 noet: */
+/* vim: set ts=8 sw=4 sts=4 noet: 
+========================================================================
+This file is part of LightCount.
+
+LightCount is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+LightCount is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
+========================================================================
+*/
 #include "lightcount.h"
 #include <sys/utsname.h>
 #include <assert.h>
@@ -6,12 +23,26 @@
 #include <stdio.h>
 #include <string.h>
 
+/* Includes for select(2) when usleep(3) is unavailable */
 #if !(_BSD_SOURCE || _XOPEN_SOURCE >= 500)
 # include <sys/time.h>
 # include <sys/types.h>
 # include <unistd.h>
 #endif /* !(_BSD_SOURCE || _XOPEN_SOURCE >= 500) */
 
+/* Endianness */
+#if !defined(_BIG_ENDIAN) && !defined(_LITTLE_ENDIAN)
+# include <endian.h>
+# if __BYTE_ORDER == __BIG_ENDIAN
+#  define _BIG_ENDIAN
+# elif __BYTE_ORDER == __LITTLE_ENDIAN
+#  define _LITTLE_ENDIAN
+# else
+#  error Byte order undefined
+# endif
+#endif
+
+/* Fix non-bsd signal(2) behaviour when sigaction(2) is unavailable */
 #if !(__USE_POSIX || __USE_BSD)
 # ifndef _NSIG
 #  define _NSIG 65
@@ -84,6 +115,22 @@ int util_signal_set(int signum, void (*handler)(int)) {
     }
 #endif /* !__USE_POSIX && !__USE_BSD */
     return 0;
+}
+
+char *util_inet_htoa(uint32_t ip4) {
+    static char static_buf[16];
+    uint8_t const *ip48 = (uint8_t const*)&ip4;
+    static_buf[15] = '\0';
+    sprintf(
+	static_buf,
+	"%" SCNu8 ".%" SCNu8 ".%" SCNu8 ".%" SCNu8,
+#if defined(_BIG_ENDIAN)
+	ip48[0], ip48[1], ip48[2], ip48[3]
+#elif defined(_LITTLE_ENDIAN)
+        ip48[3], ip48[2], ip48[1], ip48[0]
+#endif
+    );
+    return static_buf;
 }
 
 #if !(_BSD_SOURCE || _XOPEN_SOURCE >= 500)
