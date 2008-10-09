@@ -7,11 +7,14 @@ DAEMON
 + Use getopt() and read more from config file (e.g. interface)
 + Merge pentagon-changes
 + Remove SQL primary key, add constraint, rename count_tpl to sample_tbl.
++ Fix module names (sniff.c --> sniff_linux.c) and update makefile accordingly.
+  (Add storage_console.c)
 
 DOCS
 ====
 + Document SQL examples with useful functions, e.g.:
-  SELECT FROM_UNIXTIME(unixtime), INET_NTOA(ip), vlan_id, in_bps, out_bps FROM count_tbl;
+  SELECT FROM_UNIXTIME(unixtime), INET_NTOA(ip), vlan_id, in_bps, out_bps
+   FROM count_tbl;
 + Add changelog/copyright/install
 
 INTERFACE
