@@ -13,7 +13,7 @@
 #endif /* !(_BSD_SOURCE || _XOPEN_SOURCE >= 500) */
 
 #if !(__USE_POSIX || __USE_BSD)
-# ifdef _NSIG
+# ifndef _NSIG
 #  define _NSIG 65
 # endif
 typedef void (*sighandler_t)(int);

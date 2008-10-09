@@ -18,23 +18,24 @@
 
 /* The all-important counter struct. Only the `memory` module uses this, but
  * its callback receives it as well, so it's listed here. */
+struct ipcount_t;
 struct ipcount_t {
     union {
 	struct ipcount_t *more_memory;
-	u_int64_t bytes_in;
+	uint64_t bytes_in;
     } u;
-    u_int64_t bytes_out;
-    u_int32_t packets_in;
-    u_int32_t packets_out;
-    u_int16_t ip_high;
-    u_int16_t vlan;
-    u_int32_t is_used:1,
+    uint64_t bytes_out;
+    uint32_t packets_in;
+    uint32_t packets_out;
+    uint16_t ip_high;
+    uint16_t vlan;
+    uint32_t is_used:1,
 	is_reserved:31;
 };
 
 /* The `memory_enum` callback type. Gets a 32-bits IP address and an ipcount_t
  * struct as arguments. */
-typedef void (*memory_enum_cb)(u_int32_t, struct ipcount_t const*);
+typedef void (*memory_enum_cb)(uint32_t, struct ipcount_t const*);
 
 
 /*----------------------------------------------------------------------------*
@@ -59,8 +60,8 @@ void memory_help(); /* show info */
 void *memory_alloc(); /* create memory to pass around */
 void memory_reset(void *memory); /* reset the memory to be reused */
 void memory_free(void *memory); /* free the memory */
-void memory_add(void *memory, u_int32_t src, u_int32_t dst, u_int16_t vlan,
-		u_int16_t len); /* store intermittent values */
+void memory_add(void *memory, uint32_t src, uint32_t dst, uint16_t vlan,
+		uint16_t len); /* store intermittent values */
 void memory_enum(void *memory, memory_enum_cb cb); /* read values */
 
 
@@ -92,7 +93,7 @@ void sniff_loop(int packet_socket, void *memory1, void *memory2); /* run */
 void storage_help();
 int storage_open(char const *config_file);
 void storage_close();
-void storage_write(u_int32_t unixtime_begin, u_int32_t interval, void *memory);
+void storage_write(uint32_t unixtime_begin, uint32_t interval, void *memory);
 
 
 /*----------------------------------------------------------------------------*

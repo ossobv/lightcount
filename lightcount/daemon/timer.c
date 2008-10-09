@@ -28,7 +28,7 @@ void timer_help() {
 	"Sleeps until the specified interval of %.2f minutes have passed and wakes up\n"
 	"to tell the storage engine to write averages.\n"
 	"\n",
-	(u_int32_t)INTERVAL_SECONDS, (float)INTERVAL_SECONDS / 60
+	(uint32_t)INTERVAL_SECONDS, (float)INTERVAL_SECONDS / 60
     );
 }
 

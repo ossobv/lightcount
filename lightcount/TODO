@@ -5,7 +5,6 @@ DAEMON
 ======
 + Daemonize (fork) and logging to syslog
 + Use getopt() and read more from config file (e.g. interface)
-+ Merge pentagon-changes
 + Remove SQL primary key, add constraint, rename count_tpl to sample_tbl.
 + Fix module names (sniff.c --> sniff_linux.c) and update makefile accordingly.
   (Add storage_console.c)

@@ -12,9 +12,9 @@
 #define BUCKETS 7
 
 
-static void memory__add_one(void *memory, u_int32_t ip, u_int16_t vlan, u_int16_t len, int is_output);
+static void memory__add_one(void *memory, uint32_t ip, uint16_t vlan, uint16_t len, int is_output);
 #ifdef PRINT_EVERY_PACKET
-static void memory__dump_ipcount(u_int32_t ip, struct ipcount_t *ipc);
+static void memory__dump_ipcount(uint32_t ip, struct ipcount_t *ipc);
 #endif
 
 void memory_help() {
@@ -28,16 +28,16 @@ void memory_help() {
 	"(2**BITS)*(BUCKETS+1)*sizeof(ipcount_t) == %" SCNu64 "MB ram. Plus an optional %" SCNu64 "kB\n"
 	"more per bucket overrun.\n"
 	"\n",
-	(u_int32_t)HASHBITS, (u_int32_t)BUCKETS,
-	(u_int32_t)HASHBITS, (u_int32_t)BUCKETS, (u_int32_t)sizeof(struct ipcount_t),
-	(u_int64_t)(1 << HASHBITS) * (BUCKETS + 1) * sizeof(struct ipcount_t) / 1024 / 1024,
-	(u_int64_t)(1 << (32 - HASHBITS)) * sizeof(struct ipcount_t) / 1024
+	(uint32_t)HASHBITS, (uint32_t)BUCKETS,
+	(uint32_t)HASHBITS, (uint32_t)BUCKETS, (uint32_t)sizeof(struct ipcount_t),
+	(uint64_t)(1 << HASHBITS) * (BUCKETS + 1) * sizeof(struct ipcount_t) / 1024 / 1024,
+	(uint64_t)(1 << (32 - HASHBITS)) * sizeof(struct ipcount_t) / 1024
     );
     if (HASHBITS < 16 || HASHBITS > 32) {
-	fprintf(stderr, "WARNING: HASHBITS has the insane value of %" SCNu32 "!\n\n", (u_int32_t)HASHBITS);
+	fprintf(stderr, "WARNING: HASHBITS has the insane value of %" SCNu32 "!\n\n", (uint32_t)HASHBITS);
     }
     if (BUCKETS <= 1 || BUCKETS > 511) {
-	fprintf(stderr, "WARNING: BUCKETS has the insane value of %" SCNu32 "!\n\n", (u_int32_t)BUCKETS);
+	fprintf(stderr, "WARNING: BUCKETS has the insane value of %" SCNu32 "!\n\n", (uint32_t)BUCKETS);
     }
 }
 
@@ -62,7 +62,7 @@ void memory_free(void *memory) {
     free(memory);
 }
 
-void memory_add(void *memory, u_int32_t src, u_int32_t dst, u_int16_t vlan, u_int16_t len) {
+void memory_add(void *memory, uint32_t src, uint32_t dst, uint16_t vlan, uint16_t len) {
 #if PRINT_EVERY_PACKET
     fprintf(stderr, "memory_add: 0x%08" PRIx32 " > 0x%08" PRIx32 " (len=%" SCNu16 ",vlan=%" SCNu16 ").\n", src, dst, len, vlan);
 #endif
@@ -101,26 +101,26 @@ void memory_enum(void *memory, memory_enum_cb cb) {
     m->ip_high = ih; \
     m->vlan = v; \
     if (iso) { \
-	m->packets_out = (u_int32_t)1; \
-	m->bytes_out = (u_int64_t)l; \
+	m->packets_out = (uint32_t)1; \
+	m->bytes_out = (uint64_t)l; \
     } else { \
-	m->packets_in = (u_int32_t)1; \
-	m->u.bytes_in = (u_int64_t)l; \
+	m->packets_in = (uint32_t)1; \
+	m->u.bytes_in = (uint64_t)l; \
     }
 
 #define memory__add_one_subsequent(iso, m, l) \
     if (iso) { \
-	m->packets_out += (u_int32_t)1; \
-	m->bytes_out += (u_int64_t)l; \
+	m->packets_out += (uint32_t)1; \
+	m->bytes_out += (uint64_t)l; \
     } else { \
-	m->packets_in += (u_int32_t)1; \
-	m->u.bytes_in += (u_int64_t)l; \
+	m->packets_in += (uint32_t)1; \
+	m->u.bytes_in += (uint64_t)l; \
     }
 
-static void memory__add_one(void *memory, u_int32_t ip, u_int16_t vlan, u_int16_t len, int is_output) {
+static void memory__add_one(void *memory, uint32_t ip, uint16_t vlan, uint16_t len, int is_output) {
     int i;
     struct ipcount_t *mem = (struct ipcount_t*)memory + ((ip & ((1 << HASHBITS) - 1)) * (BUCKETS + 1));
-    u_int16_t ip_high = ip >> HASHBITS;
+    uint16_t ip_high = ip >> HASHBITS;
 
     for (i = 0; i < BUCKETS; ++i, ++mem) {
 	if (!mem->is_used) {
@@ -138,7 +138,7 @@ static void memory__add_one(void *memory, u_int32_t ip, u_int16_t vlan, u_int16_
     if (mem->u.more_memory == NULL) {
 #ifndef NDEBUG
         fprintf(stderr, "memory_add_one: Buckets are full for IP 0x%08" PRIx32 ". Alloc'ing %" SCNu64 " bytes mem.\n",
-		ip, (u_int64_t)sizeof(struct ipcount_t) * (1 << (32 - HASHBITS)));
+		ip, (uint64_t)sizeof(struct ipcount_t) * (1 << (32 - HASHBITS)));
 #endif
 	mem->u.more_memory = calloc(sizeof(struct ipcount_t), 1 << (32 - HASHBITS));
 	if (mem->u.more_memory == NULL) {
@@ -164,7 +164,7 @@ static void memory__add_one(void *memory, u_int32_t ip, u_int16_t vlan, u_int16_
 }
 
 #ifdef PRINT_EVERY_PACKET
-static void memory__dump_ipcount(u_int32_t ip, struct ipcount_t *mem) {
+static void memory__dump_ipcount(uint32_t ip, struct ipcount_t *mem) {
     fprintf(stderr, "memory__dump_ipcount: (IP 0x%08" PRIx32 ") pi %" SCNu32 " po %" SCNu32 " bi %" SCNu64 " bo %" SCNu64
 	    " iph 0x%" PRIx16 " vl %" SCNu16 "\n",
 	    ip, mem->packets_in, mem->packets_out, mem->u.bytes_in, mem->bytes_out, mem->ip_high, mem->vlan);

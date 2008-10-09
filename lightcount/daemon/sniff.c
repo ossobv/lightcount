@@ -4,56 +4,67 @@
 #include "lightcount.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netpacket/packet.h>
 #include <net/if.h>
 #include <assert.h>
-#include <endian.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <netpacket/packet.h> /* linux-specific: struct_ll and PF_PACKET */
+
+/* Endianness */
+#if !defined(_BIG_ENDIAN) && !defined(_LITTLE_ENDIAN)
+# include <endian.h>
+# if __BYTE_ORDER == __BIG_ENDIAN
+#  define _BIG_ENDIAN
+# elif __BYTE_ORDER == __LITTLE_ENDIAN
+#  define _LITTLE_ENDIAN
+# endif
+#endif
 
 /* Static constants (also found in linux/if_ether.h) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if defined(_LITTLE_ENDIAN)
 # define ETH_P_ALL 0x0300   /* all frames */
 # define ETH_P_IP 0x0008    /* IP frames */
 # define ETH_P_8021Q 0x0081 /* 802.1q vlan frames */
-#elif __BYTE_ORDER == __BIG_ENDIAN
+#elif defined(_BIG_ENDIAN)
 # define ETH_P_ALL 0x0003   /* all frames */
 # define ETH_P_IP 0x0800    /* IP frames */
 # define ETH_P_8021Q 0x8100 /* 802.1q vlan frames */
+#else
+# error Byte order undefined
 #endif
 
 
 /* Ethernet header */
 struct sniff_ether {
-    u_int8_t dest[6];       /* destination host address */
-    u_int8_t source[6];     /* source host address */
-    u_int16_t type;         /* ETH_P_* type */
-    u_int16_t pcp:3,	    /* priority code point (for 8021q) */
+    uint8_t dest[6];       /* destination host address */
+    uint8_t source[6];     /* source host address */
+    uint16_t type;         /* ETH_P_* type */
+    uint16_t pcp:3,	    /* priority code point (for 8021q) */
 	     cfi:1,	    /* canonical format indicator */
 	     vid:12;	    /* vlan identifier (0=no, fff=reserved) */
-    u_int16_t type2;	    /* encapsulated type */
+    uint16_t type2;	    /* encapsulated type */
 };
 
 /* IP header */
 struct sniff_ip {
-    u_int8_t hl:4,	    /* header length */
+    uint8_t hl:4,	    /* header length */
 	     ver:4;	    /* version */
-    u_int8_t  tos;	    /* type of service */
-    u_int16_t len;	    /* total length */
-    u_int16_t id;	    /* identification */
-    u_int16_t off;	    /* fragment offset field */
+    uint8_t  tos;	    /* type of service */
+    uint16_t len;	    /* total length */
+    uint16_t id;	    /* identification */
+    uint16_t off;	    /* fragment offset field */
 #define IP_RF 0x8000        /* reserved fragment flag */
 #define IP_DF 0x4000        /* dont fragment flag */
 #define IP_MF 0x2000        /* more fragments flag */
 #define IP_OFFMASK 0x1fff   /* mask for fragmenting bits */
-    u_int8_t  ttl;	    /* time to live */
-    u_int8_t  proto;	    /* protocol */
-    u_int16_t sum;	    /* checksum */
-    u_int32_t src;	    /* source address */
-    u_int32_t dst;	    /* dest address */
+    uint8_t  ttl;	    /* time to live */
+    uint8_t  proto;	    /* protocol */
+    uint16_t sum;	    /* checksum */
+    uint32_t src;	    /* source address */
+    uint32_t dst;	    /* dest address */
 };
 
 static void *sniff__memory[2];	/* two locations to store counts in */
@@ -64,7 +75,7 @@ static int sniff__done;		/* whether we're done */
 static void sniff__switch_memory(int signum);
 static void sniff__loop_done(int signum);
 #if 0
-static void sniff__test_memory_enum(u_int32_t ip, struct ipcount_t const *ipcount);
+static void sniff__test_memory_enum(uint32_t ip, struct ipcount_t const *ipcount);
 #endif
 
 
@@ -129,7 +140,7 @@ void sniff_loop(int packet_socket, void *memory1, void *memory2) {
     ssize_t ret;
     struct sockaddr_ll saddr_ll;
     unsigned saddr_ll_size = sizeof(struct sockaddr_ll);
-    u_int8_t datagram[ETHER_IP_SIZE];
+    uint8_t datagram[ETHER_IP_SIZE];
     struct sniff_ether *ether = (struct sniff_ether*)datagram;
     struct sniff_ip *ip = (struct sniff_ip*)(datagram + 14);
     struct sniff_ip *ipq = (struct sniff_ip*)(datagram + 18);
@@ -165,9 +176,9 @@ void sniff_loop(int packet_socket, void *memory1, void *memory2) {
 	    if (ether->type == ETH_P_IP) {
 		memory_add(sniff__memp, ntohl(ip->src), ntohl(ip->dst), 0, ntohs(ip->len) + 18);
 	    } else if (ether->type == ETH_P_8021Q && ether->type2 == ETH_P_IP) {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if defined(_LITTLE_ENDIAN)
 		memory_add(sniff__memp, ntohl(ipq->src), ntohl(ipq->dst), ntohs(ether->vid << 4), ntohs(ipq->len) + 22);
-#elif __BYTE_ORDER == __BIG_ENDIAN
+#elif defined(_BIG_ENDIAN)
 		memory_add(sniff__memp, ntohl(ipq->src), ntohl(ipq->dst), ntohs(ether->vid), ntohs(ipq->len) + 22);
 #else
 		assert(0);
@@ -211,18 +222,18 @@ static void sniff__loop_done(int signum) {
 }
 
 #if 0
-static void sniff__test_memory_enum(u_int32_t ip, struct ipcount_t const *ipcount) {
-    u_int8_t *ip8 = (u_int8_t*)&ip;
+static void sniff__test_memory_enum(uint32_t ip, struct ipcount_t const *ipcount) {
+    uint8_t *ip8 = (uint8_t*)&ip;
     fprintf(stderr, " * %" SCNu8 ".%" SCNu8 ".%" SCNu8 ".%" SCNu8
 	    " pktIO %" SCNu32 "/%" SCNu32 " bytesIO %" SCNu64 "/%" SCNu64 " vlan# %" SCNu16 "\n",
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if defined(_LITTLE_ENDIAN)
        	    ip8[3], ip8[2], ip8[1], ip8[0],
-#elif __BYTE_ORDER == __BIG_ENDIAN
+#elif defined(_BIG_ENDIAN)
        	    ip8[0], ip8[1], ip8[2], ip8[3],
 #else
 	    0, 0, 0, 0,
 #endif
-	    ipcount->packets_in, ipcount->packets_out, ipcount->bytes_in, ipcount->bytes_out,
+	    ipcount->packets_in, ipcount->packets_out, ipcount->u.bytes_in, ipcount->bytes_out,
 	    ipcount->vlan);
 }
 #endif

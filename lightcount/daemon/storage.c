@@ -12,8 +12,8 @@
 static char const *storage__config_file;    /* configuration file name */
 static MYSQL *storage__mysql;		    /* gets reinitialized every write */
 static int storage__node_id;		    /* may vary per write */
-static u_int32_t storage__unixtime_begin;   /* varies per write */
-static u_int32_t storage__interval;	    /* may vary per write */
+static uint32_t storage__unixtime_begin;   /* varies per write */
+static uint32_t storage__interval;	    /* may vary per write */
 
 static char storage__conf_host[256];	    /* db hostname/ip */
 static int storage__conf_port;		    /* db port */
@@ -27,7 +27,7 @@ static void storage__db_disconnect();
 static int storage__db_get_node_id(char const *safe_node_name);
 static int storage__read_config(char const *config_file);
 static void storage__rtrim(char *io);
-static void storage__write_ip(u_int32_t ip, struct ipcount_t const *ipcount);
+static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount);
 
 
 void storage_help() {
@@ -83,7 +83,7 @@ void storage_close() {
     mysql_library_end();
 }
 
-void storage_write(u_int32_t unixtime_begin, u_int32_t interval, void *memory) {
+void storage_write(uint32_t unixtime_begin, uint32_t interval, void *memory) {
     char buf[BUFSIZE];
 
     /* Connect to database */
@@ -234,7 +234,7 @@ static void storage__rtrim(char *io) {
 	*p = '\0';
 }
 
-static void storage__write_ip(u_int32_t ip, struct ipcount_t const *ipcount) {
+static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
     char buf[BUFSIZE];
 
     /* Include select that checks whether IP is in range */
