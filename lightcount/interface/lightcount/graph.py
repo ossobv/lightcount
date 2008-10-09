@@ -41,30 +41,31 @@ class StandardGraph:
                             yvalues[i] = 1
                 else:
                     yvalues = line['yvalues']
-                # Draw the line
-                ax.plot(
-                    xvalues,
-                    yvalues, color=line['color'],
-                    linewidth=2.00,
-                    alpha=0.5,
-                    label=line['name']
-                )
+                # Draw the line, unless there are only None-valus
+                if len(set(yvalues) - set((None,))) != 0:
+                    ax.plot(
+                        xvalues,
+                        yvalues, color=line['color'],
+                        linewidth=2.00,
+                        alpha=0.5,
+                        label=line['name']
+                    )
 
             # Draw 95th percentile line if we only show one IN/OUT graph
             if self.params.only_one_value_source:
-                pos = self.data.calculate_billing_value(
+                billing_begin, billing_end, billing_value = self.data.calculate_billing_value(
                     self.params.begin_date, 
                     node_id=self.params.node_ids[0],
                     vlan_id=self.params.vlan_ids[0],
                     ip=self.params.ips[0]
                 )
-                ax.plot(
-                    (xvalues[0], xvalues[-1]),
-                    (pos, pos),
-                    color='#ff0000',
-                    linewidth='1.00',
-                    label='95th P is at %s' % (graphutil.BitsPerSecondFormatter()(pos),)
-                )
+                xbegin = max(xvalues[0], date2num(billing_begin))
+                xend = min(xvalues[-1], date2num(billing_end))
+
+                label = '95th P is at %s' % (graphutil.BitsPerSecondFormatter()(billing_value),)
+                if ax.get_yscale() == 'log' and billing_value == 0:
+                    billing_value = 1
+                ax.plot((xbegin, xend), (billing_value, billing_value), color='#ff0000', linewidth='1.00', label=label)
 
         def format_x_axis(ax):
             ''' Draw vertical lines and line identifiers. '''
@@ -76,7 +77,7 @@ class StandardGraph:
                 fmt = graphutil.DateFormatter('%Hh', tz=self.params.begin_date.tzinfo)
             elif self.params.date_diff <= 7 * 86400:
                 loc = graphutil.HourLocator(interval=24)
-                fmt = graphutil.DateFormatter('%a %Hh', tz=self.params.begin_date.tzinfo)
+                fmt = graphutil.DateFormatter('%d/%m', tz=self.params.begin_date.tzinfo)
             elif self.params.date_diff <= 50 * 86400:
                 loc = graphutil.WeekdayLocator(graphutil.MONDAY)
                 fmt = graphutil.DateFormatter('%a %d %b', tz=self.params.begin_date.tzinfo)

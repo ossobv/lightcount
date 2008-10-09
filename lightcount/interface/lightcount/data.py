@@ -129,7 +129,7 @@ class Data(object):
             (inbound and outbound) values. Keyword arguments are the same as get_raw_values takes. '''
         begin_date = datetime(month_date.year, month_date.month, 1, tzinfo=month_date.tzinfo)
         end_date = datetime.fromtimestamp(mktime((month_date.year, month_date.month + 1, 1, 0, 0, 0, -1, -1, -1)) - 1, month_date.tzinfo)
-        return max(
+        return begin_date, end_date, max(
             self.calculate_percentile(95, 'in_bps', begin_date, end_date, **kwargs),
             self.calculate_percentile(95, 'out_bps', begin_date, end_date, **kwargs)
         )

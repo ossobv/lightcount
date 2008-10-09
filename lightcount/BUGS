@@ -1,9 +1,11 @@
 = TO IMPROVE ==
 
 == DAEMON ==
-+ timer.c: N*sleep(1) is bad..
++ timer.c: N*sleep(1) is bad.. are there any working alternatives?
 
 == INTERFACE ==
 + Daylight-saving works now, but it's fragile :) Don't break it.
-+ Fixed: ./chart.py -t week -c ../lightcount.conf --begin-date 2008-09-29, but
-  we want to see _two_ red 95th percentile lines.
++ When comparing multiple nodes, vlans or IP addresses you may see the bandwidth
+  doubled. This is because in comparison graphs, the inbound and outbound
+  traffic is summed into one line.
++ The graph shows only one 95P-line, even when showing two months.
