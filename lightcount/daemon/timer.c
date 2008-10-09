@@ -93,7 +93,7 @@ void timer_loop_stop() {
 static void *timer__run(void *thread_arg) {
     struct timeval current_time; /* current time is in UTC */
     int first_run_skipped = 0; /* do not store the first run because the interval is wrong */
-    int sleep_useconds;
+    int sample_begin_time, sleep_useconds;
 
 #ifndef NDEBUG
     fprintf(stderr, "timer__run: Thread started.\n");
@@ -106,6 +106,8 @@ static void *timer__run(void *thread_arg) {
 	    return (void*)-1;
 	}
     
+	/* Yes, we start sampling at SIGUSR1, so this is correct. */
+	sample_begin_time = current_time.tv_sec - (current_time.tv_sec % INTERVAL_SECONDS);
 	/* Calculate how long to sleep */
 	sleep_useconds = 1000000 * (INTERVAL_SECONDS - (current_time.tv_sec % INTERVAL_SECONDS)) - current_time.tv_usec;
 #ifndef NDEBUG
@@ -115,14 +117,25 @@ static void *timer__run(void *thread_arg) {
 		(int)current_time.tv_usec, sleep_useconds);
 #endif
 
-	/* Sleep won't EINTR on SIGALRM, use a crappy loop instead */
-	while (!timer__done && (sleep_useconds -= 1000000) > 999999)
+	/* Sleep won't EINTR on SIGALRM in this thread. No, pause/alarm won't work either, pause doesn't wake up here.
+	 * We use a crappy loop instead. */
+	while (!timer__done && sleep_useconds > 999999) {
 	    sleep(1);
+	    sleep_useconds -= 1000000;
+	}
 	if (timer__done)
 	    break;
-	usleep(sleep_useconds % 1000000); /* some systems do not like usleep to sleep too long */
+	usleep(sleep_useconds);
+
 #ifndef NDEBUG
-	fprintf(stderr, "timer__run: Awake!\n");
+	if (gettimeofday(&current_time, NULL) != 0) {
+	    perror("gettimeofday");
+	    return (void*)-1;
+	}
+	fprintf(stderr, "timer__run: Awake! Time is now %i (%02i:%02i:%02i.%06i).\n",
+		(int)current_time.tv_sec,
+		(int)(current_time.tv_sec / 3600) % 24, (int)(current_time.tv_sec / 60) % 60, (int)current_time.tv_sec % 60,
+		(int)current_time.tv_usec);
 #endif
 
 	/* Poke other thread to switch memory */
@@ -130,10 +143,8 @@ static void *timer__run(void *thread_arg) {
 	sleep(1); /* wait a second to let other thread finish switching memory */
 
 	if (first_run_skipped) {
-	    /* Delegate the actual writing to storage.
-	     * Round the unixtime_begin down to 3 seconds because we might be off a bit
-	     * mostly because of the crappy loop above. */
-	    storage_write(current_time.tv_sec - (current_time.tv_sec % 3), INTERVAL_SECONDS, timer__memp);
+	    /* Delegate the actual writing to storage. */
+	    storage_write(sample_begin_time, INTERVAL_SECONDS, timer__memp);
 	} else {
 	    /* On first run, we started too late in the interval. Ignore those counts. */
 	    first_run_skipped = 1;
