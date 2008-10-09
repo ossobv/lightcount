@@ -86,8 +86,7 @@ class StandardGraph:
             ax.xaxis.set_major_locator(loc)
             ax.xaxis.set_major_formatter(fmt)
             ax.xaxis.set_ticks_position('top')
-            xmin, xmax = ax.dataLim.intervalx().get_bounds()
-            ax.set_xlim(xmin=xmin, xmax=xmax)
+            ax.set_xlim(xmin=date2num(self.params.begin_date), xmax=date2num(self.params.end_date))
             for label in ax.get_xticklabels():
                 label.set_fontsize(10)
             for tick in ax.yaxis.get_major_ticks():
@@ -140,7 +139,11 @@ class StandardGraph:
         # Draw lines, axes, legend and grid
         plot_lines(
             ax,
-            drange(self.params.begin_date, self.params.end_date, timedelta(seconds=self.params.sample_size)),
+            drange(
+                self.params.begin_date,
+                self.params.end_date + timedelta(seconds=1), # +1 to get "inclusive" end_date
+                timedelta(seconds=self.params.sample_size)
+            ),
             self.__params_to_lines()
         )
         format_x_axis(ax)
@@ -165,7 +168,10 @@ class StandardGraph:
                 keys.sort()
             yvalues = []
             for key in keys:
-                yvalues.append(values[key] * 8) # *8 to get bits
+                if values[key] != None:
+                    yvalues.append(values[key] * 8) # *8 to get bits
+                else:
+                    yvalues.append(None)
             # Get name
             return yvalues
 

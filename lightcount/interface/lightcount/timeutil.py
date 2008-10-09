@@ -3,7 +3,7 @@ import lightcount
 from calendar import monthrange
 from lib.fixed_datetime import datetime, timedelta # datetime has tz bugs 
 from pytz import timezone
-from time import mktime
+from time import mktime, time
 
 
 

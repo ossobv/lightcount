@@ -35,9 +35,10 @@ class Data(object):
         assert what in ('in_pps', 'in_bps', 'out_pps', 'out_bps', 'in_pps + out_pps', 'in_bps + out_bps')
 
         # Create query (MySQLdb does not like %i/%d... %s should work fine though)
+        # Get "inclusive" end_date.. we want both fence posts on the graph.
         q = ['''SELECT unixtime, SUM(%s)
                 FROM sample_tbl
-                WHERE %%(begin_date)s <= unixtime AND unixtime < %%(end_date)s''' % (what,)]
+                WHERE %%(begin_date)s <= unixtime AND unixtime <= %%(end_date)s''' % (what,)]
         d = {'begin_date': mktime(begin_date.timetuple()), 'end_date': mktime(end_date.timetuple())}
 
         # Add optional query restrictions
@@ -62,19 +63,26 @@ class Data(object):
         assert (sample_size % 300) == 0
         samples_divisor = float(sample_size / lightcount.INTERVAL_SECONDS) # want floating average
         begin_date_u, end_date_u = int(mktime(begin_date.timetuple())), int(mktime(end_date.timetuple()))
-        
-        assert (begin_date_u % sample_size) == 0 and (end_date_u % sample_size) == 0
+        assert (begin_date_u % sample_size) == 0
 
-        # Init sampled_values
+        # We can't predict lines in the future, compare times with now..
+        # This will break when your time is not in sync >:-)
+        now = time() - lightcount.INTERVAL_SECONDS
+
+        # Init sampled_values (use "inclusive" end_date (+1))
         resampled_values = {}
-        for date in range(begin_date_u, end_date_u, sample_size):
-            resampled_values[date] = 0
+        for date in range(begin_date_u, end_date_u + 1, sample_size):
+            if date < now:
+                resampled_values[date] = 0
+            else:
+                resampled_values[date] = None
         # Add values
         raw_values = self.get_raw_values(what, begin_date, end_date, **kwargs)
         for row in raw_values:
             while row[0] >= begin_date_u + sample_size:
                 begin_date_u += sample_size
-            resampled_values[begin_date_u] += long(row[1])
+            if resampled_values[begin_date_u] != None: # Can happen when time is out of sync...
+                resampled_values[begin_date_u] += long(row[1])
         # Average values
         if samples_divisor != 1:
             for key in resampled_values:
@@ -106,13 +114,21 @@ class Data(object):
         values = self.get_values(what, begin_date, end_date, **kwargs)
         values = values.values()
         values.sort()
+
+        # Remove all 'None'-values from the future
+        try:
+            while True:
+                values.remove(None)
+        except:
+            pass
+
         return values[int(math.ceil(len(values) / 100.0 * float(nth_percentile))) - 1]
 
     def calculate_billing_value(self, month_date, **kwargs):
         ''' Calculate the 95th percentile over the provided period. Use the highest of the two
             (inbound and outbound) values. Keyword arguments are the same as get_raw_values takes. '''
         begin_date = datetime(month_date.year, month_date.month, 1, tzinfo=month_date.tzinfo)
-        end_date = datetime(month_date.year, month_date.month + 1, 1, tzinfo=month_date.tzinfo)
+        end_date = datetime.fromtimestamp(mktime((month_date.year, month_date.month + 1, 1, 0, 0, 0, -1, -1, -1)) - 1, month_date.tzinfo)
         return max(
             self.calculate_percentile(95, 'in_bps', begin_date, end_date, **kwargs),
             self.calculate_percentile(95, 'out_bps', begin_date, end_date, **kwargs)
