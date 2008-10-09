@@ -36,7 +36,7 @@ class Data(object):
 
         # Create query (MySQLdb does not like %i/%d... %s should work fine though)
         q = ['''SELECT unixtime, SUM(%s)
-                FROM count_tbl
+                FROM sample_tbl
                 WHERE %%(begin_date)s <= unixtime AND unixtime < %%(end_date)s''' % (what,)]
         d = {'begin_date': mktime(begin_date.timetuple()), 'end_date': mktime(end_date.timetuple())}
 
