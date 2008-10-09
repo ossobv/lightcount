@@ -1,0 +1,90 @@
+========================================================================
+  INSTALL (LightCount IP traffic counter)                wjd, oct 2008
+========================================================================
+
+  This document describes how to install LightCount. Execute the
+following steps.
+
+
+------------------------------------------------------------------------
+  Compiling the daemon
+------------------------------------------------------------------------
+  After downloading the latest version, you need to compile the daemon.
+Go into the daemon/ directory and type 'make':
+$ cd daemon
+$ make
+
+  This might produce errors. Either you're not running a Debian/Linux or
+Ubuntu/Linux system or you're missing one of the following packages:
++ gcc (the compiler) and make (the build tool)
++ libc6-dev (the standard development libraries)
++ libmysqlclient-dev (the mysql client libraries)
+
+  Install them and try again.
+
+  Note that it will most likely compile on any other GNU/Linux
+installation. Only the packages you need might be a bit different.
+
+------------------------------------------------------------------------
+  Setting up the database
+------------------------------------------------------------------------
+  Currently you can only select storage_my.c to store the data in a
+MySQL database. I assume that you have one set up and know how to do
+basic thing like running the CREATE TABLE script in the lightcount
+root directory. Do it:
+$ mysql YOUR_CREDENTIALS < lightcount.storage_my.sql
+
+------------------------------------------------------------------------
+  Setting up the configuration file
+------------------------------------------------------------------------
+  Both the daemon and the interface require a simple configuration file.
+Copy the lightcount.conf.example to lightcount.conf and supply the MySQL
+credentials you used in the previous step.
+
+------------------------------------------------------------------------
+  Running the daemon
+------------------------------------------------------------------------
+  If the compile step went like it should, you have three daemon
+executables: lightcount, lightcount.slow and lightcount.fast. They take
+two arguments: the interface name (or 'any') and the configuration file
+name. Example:
+# ./lightcount eth0 ../lightcount.conf
+
+  Hit the common CTRL-C combination to stop it.
+
+  If you want extensive help, use the -h option:
+# ./lightcount -h | more
+
+  The difference between the three versions is the amount of debugging
+output they produce and the level of optimization that the compiler
+performed.
++ lightcount.slow produces lots of output. Run it on localhost only or
+  supply a different interface than the one you're connecting from.
++ lightcount produces a little less output.
++ lightcount.fast produces only error and warning output. It is also
+  the most heavily optimized. Run this on your production system when
+  you know that it works.
+
+  (There is currently no daemonize feature. Run it in a screen(1) when
+you're done testing.)
+
+------------------------------------------------------------------------
+  Reading the data.
+------------------------------------------------------------------------
+  In the interface directory you will find graph.py. Use it to generate
+a pretty graph of your data. Run it with -h to see all available
+options. It reads the same configuration file as the daemon (the -c
+option).
+
+------------------------------------------------------------------------
+  Tweaking the daemon
+------------------------------------------------------------------------
+  There are a couple of options you can change. These options are
+hardcoded preprocessor defines instead of variables to squeeze every
+last bit of performance out of the program.
+
+  When you're ready to tweak, check out ./lightcount -h to see what you
+can change.
+
+
+========================================================================

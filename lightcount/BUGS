@@ -1,11 +1,42 @@
-= TO IMPROVE ==
+========================================================================
+  BUGS (LightCount IP traffic counter)                   wjd, oct 2008
+========================================================================
 
-== DAEMON ==
-+ timer.c: N*sleep(1) is bad.. are there any working alternatives?
+  This document lists bugs and caveats. They can be bugs that I can fix,
+bugs that I don't know how to fix or caveats that you should keep in
+mind when hacking the code.
 
-== INTERFACE ==
-+ Daylight-saving works now, but it's fragile :) Don't break it.
-+ When comparing multiple nodes, vlans or IP addresses you may see the bandwidth
-  doubled. This is because in comparison graphs, the inbound and outbound
-  traffic is summed into one line.
-+ The graph shows only one 95P-line, even when showing two months.
+
+------------------------------------------------------------------------
+  Daemon: timer.c is awake too often
+------------------------------------------------------------------------
+  timer.c uses N times sleep(1) to wait until INTERVAL_SECONDS has
+passed. Aborting sleep(N) through a signal or using alarm/pause does not
+not work properly. Aborting the sleep is necessary to cleanly shut the
+daemon down when the user feels like it (and not INTERVAL_SECONDS
+later).
+
+------------------------------------------------------------------------
+  Interface: time zone usage is fragile
+------------------------------------------------------------------------
+  graph.py and the lightcount python libraries it depends on rely
+heavily on proper usage of tzinfo (pytz) objects. Be wary every time you
+use date and time functions.
+  In the lib/ directory, fixed_datetime.py does do useful stuff. Don't
+think it is obsolete until you test all possible combinations of reading
+periods of time accross daylight saving changes and different time zone
+objects.
+
+------------------------------------------------------------------------
+  Interface: minor issues
+------------------------------------------------------------------------
++ The graph shows only one 95th-percentile line. When you view a time
+  period that spans multiple months, you will see only the 95P line of
+  the first shown month.
++ When comparing multiple nodes, VLANs or IP addresses, you may see the
+  bandwidth doubled. In comparison graphs -- those showing more than one
+  line with IN and OUT -- the used bandwidth is a sum of the inbound and
+  outbound counts.
+
+
+========================================================================

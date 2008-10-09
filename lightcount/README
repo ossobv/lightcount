@@ -1,6 +1,26 @@
-LightCount traffic sniffer.
-Copyright (C) Walter Doekes, OSSO B.V., october 2008.
+========================================================================
+  README (LightCount IP traffic counter)                 wjd, oct 2008
+========================================================================
 
-See: lightcount -h for extensive help.
-Prerequisites: daemon/storage.c uses the mysqlclient-dev libraries.
-Tested on: Debian/Ubuntu machines running a 2.6.* Linux kernel.
+  LightCount is an IP traffic counter. It sniffs ethernet packets and
+stores average traffic counts for specified IP addresses.
+
+Copyright: Walter Doekes, OSSO B.V., 2008.
+Licensing: GPLv3, see COPYING for details.
+
+
+------------------------------------------------------------------------
+  Getting LightCount
+------------------------------------------------------------------------
+  Currently, LightCount is only available through SVN. Check out the
+latest version using subversion. The repository is here:
+
+https://code.osso.nl/svn/lightcount/trunk/lightcount
+
+------------------------------------------------------------------------
+  Installing LightCount
+------------------------------------------------------------------------
+  See INSTALL.
+
+
+========================================================================

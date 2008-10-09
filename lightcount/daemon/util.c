@@ -1,5 +1,6 @@
 /* vim: set ts=8 sw=4 sts=4 noet: 
 ========================================================================
+Copyright (C) 2008, OSSO B.V.
 This file is part of LightCount.
 
 LightCount is free software: you can redistribute it and/or modify

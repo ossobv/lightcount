@@ -1,31 +1,45 @@
-A TODO list for personal use.
+========================================================================
+  TODO (LightCount IP traffic counter)                   wjd, oct 2008
+========================================================================
+
+  This document lists a couple of features that should be implemented.
 
 
-DAEMON
-======
+------------------------------------------------------------------------
+  Daemon
+------------------------------------------------------------------------
 + Daemonize (fork) and logging to syslog
 + Use getopt() and read more from config file (e.g. interface)
 
-DOCS
-====
+------------------------------------------------------------------------
+  Documentation
+------------------------------------------------------------------------
 + Document SQL examples with useful functions, e.g.:
-  SELECT FROM_UNIXTIME(unixtime), INET_NTOA(ip), vlan_id, in_bps, out_bps
-   FROM count_tbl;
-+ Add changelog/copyright/install
+  SELECT FROM_UNIXTIME(unixtime), INET_NTOA(ip), vlan_id, in_bps,
+  out_bps FROM count_tbl;
++ Add changelog/install
 
-INTERFACE
-=========
-+ Add a textual interface
+------------------------------------------------------------------------
+  Python interface
+------------------------------------------------------------------------
++ Add a textual interface (get data per IP, get highest users per
+  period, etc.)
 + A web interface for the graphs
 
-PACKAGING
-=========
+------------------------------------------------------------------------
+  Packaging
+------------------------------------------------------------------------
 + Autoconf
 + Versioning
 + Proper help (manpage?)
 + Initd scripts
++ Adding a "live" graph to the website as "demo".
 
-TESTING
-=======
-+ Heavy load tests to run
+------------------------------------------------------------------------
+  Testing
+------------------------------------------------------------------------
++ Heavy load tests to run (feedback from users would be appreciated)
 + Optimizing default #define's through interpretation of live data
+
+
+========================================================================
