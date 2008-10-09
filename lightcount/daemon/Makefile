@@ -1,6 +1,6 @@
 CFLAGS = -Wall -g
 LDFLAGS = -Wall -g -lpthread -lmysqlclient
-OBJS = lightcount.o memory.o sniff_linux.o storage_my.o timer.o util.o
+OBJS = lightcount.o memory.o sniff_packsock.o storage_my.o timer.o util.o
 
 %.oS: %.c
 	$(COMPILE.c) -DPRINT_EVERY_PACKET $< -o $@

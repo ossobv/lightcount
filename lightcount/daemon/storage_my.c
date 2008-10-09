@@ -124,7 +124,7 @@ void storage_write(uint32_t unixtime_begin, uint32_t interval, void *memory) {
     /* Drop all entries that have all values 0. All values zero is the default anyway (no traffic). */
     sprintf(
 	buf,
-	"DELETE FROM count_tbl "
+	"DELETE FROM sample_tbl "
 	"WHERE unixtime = %" SCNu32 " AND node_id = %i"
 	" AND in_pps = 0 AND in_bps = 0 AND out_pps = 0 AND out_bps = 0",
 	storage__unixtime_begin, storage__node_id
@@ -257,7 +257,7 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
     /* Include select that checks whether IP is in range */
     sprintf(
 	buf,
-	"INSERT INTO count_tbl (unixtime,node_id,vlan_id,ip,in_pps,in_bps,out_pps,out_bps) "
+	"INSERT INTO sample_tbl (unixtime,node_id,vlan_id,ip,in_pps,in_bps,out_pps,out_bps) "
 	"SELECT "
 	    "%" SCNu32 ",%i,%" SCNu16 ",%" SCNu32 ","
 	    "ROUND(%" SCNu32 "/%" SCNu32 "),ROUND(%" SCNu64 "/%" SCNu32 "),"
