@@ -1,0 +1,6 @@
+LightCount traffic sniffer.
+Copyright (C) Walter Doekes, OSSO B.V., october 2008.
+
+See: lightcount -h for extensive help.
+Prerequisites: daemon/storage.c uses the mysqlclient-dev libraries.
+Tested on: Debian/Ubuntu machines running a 2.6.* Linux kernel.

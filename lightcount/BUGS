@@ -1,0 +1,9 @@
+= TO IMPROVE ==
+
+== DAEMON ==
++ timer.c: N*sleep(1) is bad..
+
+== INTERFACE ==
++ Daylight-saving works now, but it's fragile :) Don't break it.
++ Fixed: ./chart.py -t week -c ../lightcount.conf --begin-date 2008-09-29, but
+  we want to see _two_ red 95th percentile lines.

@@ -1,0 +1,32 @@
+A TODO list for personal use.
+
+
+DAEMON
+======
++ Daemonize (fork) and logging to syslog
++ Use getopt() and read more from config file (e.g. interface)
++ Merge pentagon-changes
++ Remove SQL primary key, add constraint, rename count_tpl to sample_tbl.
+
+DOCS
+====
++ Document SQL examples with useful functions, e.g.:
+  SELECT FROM_UNIXTIME(unixtime), INET_NTOA(ip), vlan_id, in_bps, out_bps FROM count_tbl;
++ Add changelog/copyright/install
+
+INTERFACE
+=========
++ Add a textual interface
++ A web interface for the graphs
+
+PACKAGING
+=========
++ Autoconf
++ Versioning
++ Proper help (manpage?)
++ Initd scripts
+
+TESTING
+=======
++ Heavy load tests to run
++ Optimizing default #define's through interpretation of live data

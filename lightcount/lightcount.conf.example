@@ -1,0 +1,5 @@
+storage_host=example.tld
+storage_port=3306
+storage_user=mysql-user
+storage_pass=mysql-password
+storage_dbase=lightcount
