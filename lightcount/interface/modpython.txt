@@ -1,0 +1,6 @@
+<Location />
+	SetHandler mod_python
+	PythonHandler modpython
+	PythonPath "['/path/to/these/files'] + sys.path"
+	PythonDebug On
+</Location>

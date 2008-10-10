@@ -113,6 +113,7 @@ class StandardGraph:
         def format_y_axis(ax):
             ''' Draw horizontal lines and line identifiers. '''
             # Set limits to be at least a range (else the line would be centered)
+            # Note! In the future intervaly might become a 2tuple-property.
             ymin, ymax = ax.dataLim.intervaly().get_bounds()
             # Use base2 loglocator on logarithmic output
             if ax.get_yscale() == 'log':
@@ -224,7 +225,17 @@ class StandardGraph:
         # Return all lines
         return lines
 
+    def output():
+        ''' Return the image data as binary png data. '''
+        import os
+        fname = os.tmpname() + '.png'
+        self.write(fname)
+        data = open(fname, 'rb').read()
+        os.unlink(fname)
+        return data
+
     def write(self, filename):
+        ''' Write the image to filename on the local file system. '''
         f = self.__create_figure()
         f.savefig(filename, dpi=self.params.dpi)
 
