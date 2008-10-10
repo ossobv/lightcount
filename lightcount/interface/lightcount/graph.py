@@ -228,11 +228,10 @@ class StandardGraph:
     def output():
         ''' Return the image data as binary png data. '''
         import os
-        fname = os.tmpname() + '.png'
-        self.write(fname)
-        data = open(fname, 'rb').read()
-        os.unlink(fname)
-        return data
+        tmpfile = os.tmpfile()
+        self.write(tmpfile)
+        tmpfile.seek(0)
+        return tmpfile.read()
 
     def write(self, filename):
         ''' Write the image to filename on the local file system. '''
