@@ -69,12 +69,35 @@ performed.
 you're done testing.)
 
 ------------------------------------------------------------------------
-  Reading the data.
+  Reading the data
 ------------------------------------------------------------------------
   In the interface directory you will find graph.py. Use it to generate
 a pretty graph of your data. Run it with -h to see all available
-options. It reads the same configuration file as the daemon (the -c
-option).
+options. It reads the same configuration file as the daemon (see the -c
+option). graph.py was tested with python2.5, python-tz and
+python-matplotlib.
+
+  The directory also contains modpython.py, an example script for
+(apache2) mod_python. This one is tested with python2.4, python-tz and
+python-matplotlib. Time zone support seems broken with python2.4.
+
+------------------------------------------------------------------------
+  Reading the data by hand
+------------------------------------------------------------------------
+  Of course there are a lot more things you can do with the data.
+storage_my.c stores the data in the MySQL `sample_tbl`. The `unixtime`
+column denotes the sampling begin time. The other column names speak for
+themselves. Use the built-in FROM_UNIXTIME, INET_ATON and INET_NTOA
+MySQL functions to convert to/from readable forms.
+
+------------------------------------------------------------------------
+  Limiting the stored IP addresses
+------------------------------------------------------------------------
+  By default, the storage_my.c daemon module stores any IP address it
+sees. You can limit this by editing the `ip_range_tbl` MySQL table. When
+inserting samples in the database, it checks if the IP it is about to
+insert is in range for either `node_id` NULL or the machines specific
+node_id.
 
 ------------------------------------------------------------------------
   Tweaking the daemon
