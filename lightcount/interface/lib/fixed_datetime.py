@@ -227,7 +227,7 @@ def _parse_iso(timestamp):
         # add optional minutes
         if tzm != None:
             tzm = long(tzm)
-            offsetmins += tzm if offsetmins > 0 else -tzm
+            offsetmins += (-tzm, tzm)[offsetmins > 0]
 
     tz = _get_fixed_offset_tz(offsetmins)
     return datetime(year, month, day, h, min, s, us, tz)
@@ -411,7 +411,7 @@ class datetime(_datetime):
 
         offset = self.tzinfo.utcoffset(self)
         tzseconds = offset.seconds + offset.days * 24 * 60 * 60
-        sign = '+' if tzseconds >= 0 else '-'
+        sign = ('-', '+')[tzseconds >= 0]
         tzseconds = abs(tzseconds)
         tzout = tz % (sign, int(tzseconds / 3600), int((tzseconds / 60) % 60))
 
