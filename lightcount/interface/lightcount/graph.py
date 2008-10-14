@@ -225,7 +225,7 @@ class StandardGraph:
         # Return all lines
         return lines
 
-    def output():
+    def output(self):
         ''' Return the image data as binary png data. '''
         import os
         tmpfile = os.tmpfile()
