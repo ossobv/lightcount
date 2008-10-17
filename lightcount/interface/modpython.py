@@ -18,21 +18,35 @@
 #=======================================================================
 
 import os, sys
-os.environ['HOME'] = '/tmp' # matplotlib wants to write temp files in $HOME
+if __name__ != '__main__':
+    os.environ['HOME'] = '/tmp' # matplotlib
 from lightcount import Config
 from lightcount.timeutil import *
 from lightcount.data import Data
 from lightcount.graph import StandardGraph, GraphParameters
 
+# The root of the handler in the request uri. (E.g. if you've defined
+# <Location /traffic/> in your apache configuration, you want to set
+# this to '/traffic/'.)
+WEB_ROOT = '/'
+
 
 def handler(req):
-    if req.uri == '/code.osso.nl-current-day-linear.png':
+    is_debug = bool(req.server.get_config()['PythonDebug'])
+    uri = req.uri[len(WEB_ROOT):]
+
+    # This is an example obviously. I could write "example.com" here,
+    # but having a working example in SVN makes my life easy.
+    # You will want to read graph.py and lightcount/graph.py to see
+    # exactly which GraphParameters you can define.
+
+    if uri == 'code.osso.nl-current-day-linear.png':
         return current_day(req, ip='91.194.225.81', log=False)
-    elif req.uri == '/code.osso.nl-current-day-log.png':
+    elif uri == 'code.osso.nl-current-day-log.png':
         return current_day(req, ip='91.194.225.81', log=True)
 
     req.content_type = 'text/plain'
-    req.write('Try /code.osso.nl-current-day-linear.png')
+    req.write('Try:\n%scode.osso.nl-current-day-linear.png' % (WEB_ROOT,))
     return 0
 
 
