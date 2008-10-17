@@ -35,19 +35,59 @@ class Data(object):
             connect_timeout=30
         )
 
+    def canonicalize_node(self, node):
+        if node is None:
+            return None
+        try:
+            return int(node)
+        except:
+            cursor = self.conn.cursor()
+            cursor.execute('SELECT node_id FROM node_tbl WHERE node_name = %s', (node,))
+            return int(cursor.fetchone()[0])
+
+    def humanize_node(self, node):
+        if node is None:
+            return None
+        if not node.isdigit():
+            return node
+        node = int(node)
+        cursor = self.conn.cursor()
+        cursor.execute('SELECT node_name FROM node_tbl WHERE node_id = %s', (node,))
+        return '%s (%u)' % (cursor.fetchone()[0], node)
+
+    def canonicalize_vlan(self, vlan):
+        if vlan is None:
+            return None
+        return int(vlan)
+
+    def humanize_vlan(self, vlan):
+        if vlan is None:
+            return None
+        return str(vlan)
+
+    def canonicalize_ip(self, ip):
+        if ip is None:
+            return None
+        try:
+            return long(ip)
+        except:
+            return bits.inet_atol(ip)
+    
+    def humanize_ip(self, ip):
+        if ip is None:
+            return None
+        if not ip.isdigit():
+            return ip
+        return bits.inet_ltoa(ip)
+    
     def get_nodes(self):
         ''' Get all available nodes from the database. '''
-        cursor = self.conn.cursor()
-        cursor.execute('SELECT node_id, node_name FROM node_tbl ORDER BY node_name')
-        ret = {}
-        for row in cursor.fetchall():
-            ret[int(row[0])] = row[1]
         return ret
-    
-    def get_raw_values(self, what, begin_date, end_date, node_id=None, vlan_id=None, ip=None):
+
+    def get_raw_values(self, what, begin_date, end_date, node=None, vlan=None, ip=None):
         ''' Get values written to database. Select only the 'what'-field, which can be ony of:
             'in_pps', 'in_bps', 'out_pps', 'out_bps', 'in_pps + out_pps' or 'in_bps + out_bps'.
-            The begin_date and end_date must be datetime objects. node_id, vlan_id and ip are
+            The begin_date and end_date must be datetime objects. node, vlan and ip are
             optional. Use get_values instead of this. '''
         assert what in ('in_pps', 'in_bps', 'out_pps', 'out_bps', 'in_pps + out_pps', 'in_bps + out_bps')
 
@@ -59,11 +99,13 @@ class Data(object):
         d = {'begin_date': mktime(begin_date.timetuple()), 'end_date': mktime(end_date.timetuple())}
 
         # Add optional query restrictions
-        ip = ip and bits.inet_atol(ip) # ip string to numeric
-        for (id, name) in ((node_id, 'node_id'), (vlan_id, 'vlan_id'), (ip, 'ip')):
+        node = self.canonicalize_node(node)
+        vlan = self.canonicalize_vlan(vlan)
+        ip = self.canonicalize_ip(ip)
+        for (id, name) in ((node, 'node_id'), (vlan, 'vlan_id'), (ip, 'ip')):
             if id != None:
                 q.append('AND %(name)s = %%(%(name)s)s' % {'name': name})
-                d[name] = long(id)
+                d[name] = id
 
         # Add query order
         q.append('''GROUP BY unixtime ORDER BY unixtime''')
@@ -107,19 +149,23 @@ class Data(object):
 
         return resampled_values
 
-    def get_values_name(self, node_id=None, vlan_id=None, ip=None):
+    def get_values_name(self, node=None, vlan=None, ip=None):
+        node = self.humanize_node(node)
+        vlan = self.humanize_vlan(vlan)
+        ip = self.humanize_ip(ip)
+
         if ip != None:
-            name = str(ip)
-            if vlan_id != None: 
-                name += ' with vlan# %u' % (vlan_id,)
-            if node_id != None:
-                name += ' MON %s (%u)' % (self.get_nodes()[node_id], node_id)
-        elif vlan_id != None:
-            name = 'vlan# %u' % (vlan_id,)
-            if node_id != None:
-                name += ' MON %s (%u)' % (self.get_nodes()[node_id], node_id)
-        elif node_id != None:
-            name = 'MON %s (%u)' % (self.get_nodes()[node_id], node_id)
+            name = ip
+            if vlan != None: 
+                name += ' with vlan# %s' % (vlan,)
+            if node != None:
+                name += ' MON %s' % (node,)
+        elif vlan != None:
+            name = 'vlan# %s' % (vlan,)
+            if node != None:
+                name += ' MON %s' % (node,)
+        elif node != None:
+            name = 'MON %s' % (node,)
         else:
             name = 'everything'
         return name

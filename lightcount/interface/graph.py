@@ -42,9 +42,9 @@ if __name__ == '__main__':
         elif key in ('-i', '--ip'):
             graph_parameters.ips.append(val)
         elif key in ('-n', '--node'):
-            graph_parameters.node_ids.append(int(val))
+            graph_parameters.nodes.append(val)
         elif key in ('-v', '--vlan'):
-            graph_parameters.vlan_ids.append(int(val))
+            graph_parameters.vlans.append(val)
         elif key in ('-o', '--output-file'):
             if 'output_file' in scratchpad:
                 raise GetoptError('Output file name already specified!')
@@ -89,13 +89,16 @@ Period selection:
   -z, --time-zone=Z     use time zone name Z (dfl: %(Z)s)
 
 Value selection:
-  -n, --node=N          node_id N (may be specified multiple times)
-  -v, --vlan=I          vlan_id V (may be specified multiple times)
+  -n, --node=N          node N (may be specified multiple times)
+  -v, --vlan=V          vlan V (may be specified multiple times)
   -i, --ip=I            IP address I (may be specified multiple times)
 
 Graph options:
       --linear          display the graph with a linear scale (default)
       --log             display the graph with a logarithmic scale
+
+Nodes may specified as a node name or a node id. IP addresses may be specified
+in the normal numbers-and-dots notation or as an unsigned integer.
 ''' % {'Ps': ', '.join(periods()), 'Z': timezone_default()}
             sys.exit(0)
         elif key == '--version':

@@ -24,6 +24,11 @@ def inet_atol(ip):
         ip_long |= byte
     return ip_long
 
+def inet_ltoa(ip):
+    ''' Converts the an unsigned 32 bits integer to standard numbers-and-dots notation. '''
+    ip = long(ip)
+    return '%u.%u.%u.%u' % (ip >> 24, (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff)
+
 def bitfloor(number):
     ''' Rounds down to the nearest number with only one active bit. '''
     number = long(number)
