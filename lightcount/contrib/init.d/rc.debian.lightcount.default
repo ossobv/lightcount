@@ -5,5 +5,5 @@ CONFIG=/etc/lightcount.conf
 # Set the interface name to sniff on here or 'any' for all interfaces
 IFACE=eth0
 # Run iproute-ip to put interfaces in promiscuous mode
-/sbin/ip link set eth0 promisc on
-#/sbin/ip link set eth1 promisc on
+/sbin/ip link set eth0 up promisc on
+#/sbin/ip link set eth1 up promisc on
