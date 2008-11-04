@@ -57,12 +57,10 @@ NOTE: Its your job to put the interfaces in promiscuous mode.
 
 /* Ethernet header */
 struct sniff_ether {
-    uint8_t dest[6];       /* destination host address */
-    uint8_t source[6];     /* source host address */
-    uint16_t type;         /* ETH_P_* type */
-    uint16_t pcp:3,	    /* priority code point (for 8021q) */
-	     cfi:1,	    /* canonical format indicator */
-	     vid:12;	    /* vlan identifier (0=no, fff=reserved) */
+    uint8_t dest[6];	    /* destination host address */
+    uint8_t source[6];	    /* source host address */
+    uint16_t type;	    /* ETH_P_* type */
+    uint16_t pcp_cfi_vid;   /* 3bit prio, 1bit format indic, 12bit vlan (0=no, fff=reserved) */
     uint16_t type2;	    /* encapsulated type */
 };
 
@@ -194,13 +192,19 @@ void sniff_loop(int packet_socket, void *memory1, void *memory2) {
 	    if (ether->type == ETH_P_IP) {
 		memory_add(sniff__memp, ntohl(ip->src), ntohl(ip->dst), 0, ntohs(ip->len) + 18);
 	    } else if (ether->type == ETH_P_8021Q && ether->type2 == ETH_P_IP) {
+		memory_add(
+		    sniff__memp,
+		    ntohl(ipq->src),
+		    ntohl(ipq->dst),
 #if defined(_LITTLE_ENDIAN)
-		memory_add(sniff__memp, ntohl(ipq->src), ntohl(ipq->dst), ntohs(ether->vid << 4), ntohs(ipq->len) + 22);
+		    ((uint8_t*)&ether->pcp_cfi_vid)[1] | ((((uint8_t*)&ether->pcp_cfi_vid)[0] & 0xf) << 8),
 #elif defined(_BIG_ENDIAN)
-		memory_add(sniff__memp, ntohl(ipq->src), ntohl(ipq->dst), ntohs(ether->vid), ntohs(ipq->len) + 22);
+		    ether->pcp_cfi_vid & 0xfff,
 #endif
+		    ntohs(ipq->len) + 22
+		);
 	    }
-    	}
+	}
     } while (errno == EINTR && !sniff__done);
     /* Check errors */
     if (!sniff__done)
@@ -243,9 +247,9 @@ static void sniff__test_memory_enum(uint32_t ip, struct ipcount_t const *ipcount
     fprintf(stderr, " * %" SCNu8 ".%" SCNu8 ".%" SCNu8 ".%" SCNu8
 	    " pktIO %" SCNu32 "/%" SCNu32 " bytesIO %" SCNu64 "/%" SCNu64 " vlan# %" SCNu16 "\n",
 #if defined(_LITTLE_ENDIAN)
-       	    ip8[3], ip8[2], ip8[1], ip8[0],
+	    ip8[3], ip8[2], ip8[1], ip8[0],
 #elif defined(_BIG_ENDIAN)
-       	    ip8[0], ip8[1], ip8[2], ip8[3],
+	    ip8[0], ip8[1], ip8[2], ip8[3],
 #else
 	    0, 0, 0, 0,
 #endif
