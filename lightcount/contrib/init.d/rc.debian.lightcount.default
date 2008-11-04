@@ -1,0 +1,9 @@
+# Set this to yes if you want to run lightcount at startup.
+RUNLIGHTCOUNT=no
+# Set the config file path
+CONFIG=/etc/lightcount.conf
+# Set the interface name to sniff on here or 'any' for all interfaces
+IFACE=eth0
+# Run iproute-ip to put interfaces in promiscuous mode
+/sbin/ip link set eth0 promisc on
+#/sbin/ip link set eth1 promisc on
