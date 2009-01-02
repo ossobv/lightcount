@@ -1,21 +1,26 @@
 CFLAGS = -Wall -g
 LDFLAGS = -Wall -g -lpthread -lmysqlclient
-OBJS = lightcount.o memory.o sniff_packsock.o storage_my.o timer.o util.o
+BINS = bin/lightcount bin/lightcount.fast bin/lightcount.slow
+OBJS = obj/lightcount.o obj/memory.o obj/sniff_packsock.o obj/storage_my.o obj/timer.o obj/util.o
 
-%.oS: %.c
-	$(COMPILE.c) -DPRINT_EVERY_PACKET $< -o $@
-%.slow: %.oS
+obj/%.o: %.c
+	$(COMPILE.c) -DDEBUG $< -o $@
+bin/%: obj/%.o
 	$(LINK.o) -g0 -O3 $^ -o $@
-%.o3: %.c
+obj/%.oS: %.c
+	$(COMPILE.c) -DPRINT_EVERY_PACKET $< -o $@
+bin/%.slow: obj/%.oS
+	$(LINK.o) -g0 -O3 $^ -o $@
+obj/%.o3: %.c
 	$(COMPILE.c) -g0 -DNDEBUG -O3 $< -o $@
-%.fast: %.o3
+bin/%.fast: obj/%.o3
 	$(LINK.o) -g0 -O3 $^ -o $@
 
 .PHONY: all clean
-all: lightcount lightcount.fast lightcount.slow
+all: $(BINS)
 clean:
-	rm -f $(OBJS) $(OBJS:.o=.o3) $(OBJS:.o=.oS) lightcount lightcount.fast lightcount.slow
+	rm -f $(OBJS) $(OBJS:.o=.o3) $(OBJS:.o=.oS) $(BINS)
 
-lightcount: $(OBJS)
-lightcount.fast: $(OBJS:.o=.o3)
-lightcount.slow: $(OBJS:.o=.oS)
+bin/lightcount: $(OBJS)
+bin/lightcount.fast: $(OBJS:.o=.o3)
+bin/lightcount.slow: $(OBJS:.o=.oS)
