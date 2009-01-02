@@ -53,7 +53,7 @@ def parse_datetime(date_str, tz=None):
         raise ValueError('Dates should be in this format: mm/dd/yyyy OR YYYY-mm-dd [HH:MM].')
     return datetime_obj
 
-def periods():
+def known_periods():
     ''' Return all known 'period-of-time' types. '''
     return ('hour', '12h', 'day', 'week', 'month', 'year')
 
@@ -63,8 +63,11 @@ def datetime_round(datetime_obj, period, round_up=False):
     year, month, day, hour, minute, _, _, _, _ = datetime_obj.timetuple()
 
     # We must be INTERVAL_SECONDS aligned
-    assert lightcount.INTERVAL_SECONDS == 300
-    minute -= minute % 5
+    assert (lightcount.INTERVAL_SECONDS % 60) == 0
+    if lightcount.INTERVAL_SECONDS <= 3600:
+        minute -= minute % (lightcount.INTERVAL_SECONDS / 60)
+    else:
+        raise Exception('lightcount.INTERVAL_SECONDS must be <= 3600 and minute aligned')
 
     if period == 'year':
         plus_one = (0, 1)[round_up and (month != 1 or day != 1 or hour != 0 or minute != 0)]

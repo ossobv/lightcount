@@ -59,8 +59,8 @@ if __name__ == '__main__':
         elif key in ('-t', '--period'):
             if 'period' in scratchpad['date']:
                 raise GetoptError('Period already specified!')
-            if val not in periods():
-                raise GetoptError('Specify one of %s as period.' % (', '.join(periods())))
+            if val not in known_periods():
+                raise GetoptError('Specify one of %s as period.' % (', '.join(known_periods())))
             scratchpad['date']['period'] = val
         elif key == '--begin-date':
             if 'begin_date' in scratchpad['date']:
@@ -99,7 +99,7 @@ Graph options:
 
 Nodes may specified as a node name or a node id. IP addresses may be specified
 in the normal numbers-and-dots notation or as an unsigned integer.
-''' % {'Ps': ', '.join(periods()), 'Z': timezone_default()}
+''' % {'Ps': ', '.join(known_periods()), 'Z': timezone_default()}
             sys.exit(0)
         elif key == '--version':
             print 'chart.py v0.1'
