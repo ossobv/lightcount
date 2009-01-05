@@ -10,6 +10,8 @@
 ------------------------------------------------------------------------
 + Daemonize (fork) and logging to syslog
 + Use getopt() and read more from config file (e.g. interface)
++ Get nodename from config file so multiple interfaces can be observed
+  on one host. (Otherwise we get PK conflicts in DB.)
 
 ------------------------------------------------------------------------
   Documentation
@@ -17,7 +19,9 @@
 + Document SQL examples with useful functions, e.g.:
   SELECT FROM_UNIXTIME(unixtime), INET_NTOA(ip), vlan_id, in_bps,
   out_bps FROM count_tbl;
-+ Add changelog/install
++ Create nice views for the above.
++ Add changelog
++ Update INSTALL with comments abount init.d scripts
 
 ------------------------------------------------------------------------
   Python interface
@@ -25,6 +29,19 @@
 + Add a textual interface (get data per IP, get highest users per
   period, etc.)
 + A web interface for the graphs
++ Create means to dump data to CSV and prune the DB of old entries.
++ Replace temp calc95 percentile stuff with new func that does two
+  queries (one for in and one for out) so that we have the graph data
+  at the same time.
++ Quick writeup of upcoming changes:
+  - add 95p lines for all (optional, supply command line option)
+  - use command line options to select graph creation and/or textual
+    output (summary)
+  - move db code into Data.Storage
+  - move resultset usage into Data.Result
+  - move GraphParameters out of graph.py
+  - add proper legend (make human-output optional (otherwise show only
+    IN/OUT or something, or custom strings))
 
 ------------------------------------------------------------------------
   Packaging
@@ -32,7 +49,6 @@
 + Autoconf
 + Versioning
 + Proper help (manpage?)
-+ Initd scripts
 + Adding a "live" graph to the website as "demo".
 
 ------------------------------------------------------------------------
