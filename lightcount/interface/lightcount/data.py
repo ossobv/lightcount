@@ -24,9 +24,32 @@ from lightcount.timeutil import *
 class Data(object):
     ''' LightCount data reader. Reads data from the SQL database found in the supplied Config object. '''
 
+    class Storage(object):
+        ''' Minor database abstraction. '''
+        def __init__(self, type, host, port, user, passwd, dbase):
+            assert type == 'my', 'Only MySQL storage support is implemented'
+            self.conn = db.connect(host=host, port=int(port), user=user, passwd=passwd, db=dbase, connect_timeout=30)
+        def execute(self, *args, **kwargs):
+            cursor = self.conn.cursor()
+            cursor.execute(*args, **kwargs)
+            return cursor
+        def fetch_all(self, *args, **kwargs):
+            cursor = self.execute(*args, **kwargs)
+            return cursor.fetchall()
+        def fetch_atom(self, *args, **kwargs):
+            row = self.fetch_atom_row(*args, **kwargs)
+            assert len(row) == 1, 'Now exactly one column was returned'
+            return row[0]
+        def fetch_atom_row(self, *args, **kwargs):
+            cursor = self.execute(*args, **kwargs)
+            assert cursor.rowcount == 1 or cursor.rowcount == -1, 'Not exactly one row was returned'
+            return cursor.fetchone()
+            
+
     class Units(object):
-        def __init__(self, conn):
-            self.conn = conn
+        ''' Conversion to and from internal units. '''
+        def __init__(self, storage):
+            self.storage = storage
             self.cannodemap = {}
             self.humnodemap = {}
         def canonicalize_ip4(self, ip):
@@ -46,26 +69,23 @@ class Data(object):
             except (TypeError, ValueError):
                 node = str(node)
                 if node not in self.cannodemap:
-                    cursor = self.conn.cursor()
-                    cursor.execute('SELECT node_id FROM node_tbl WHERE node_name = %s', (node,))
-                    self.cannodemap[node] = long(cursor.fetchone()[0])
+                    self.cannodemap[node] = long(self.storage.fetch_atom('SELECT node_id FROM node_tbl WHERE node_name = %s', (node,)))
                 node_id = self.cannodemap[node]
             if node_id not in self.humnodemap:
-                cursor = self.conn.cursor()
-                cursor.execute('SELECT node_name FROM node_tbl WHERE node_id = %s', (node_id,))
-                self.humnodemap[node_id] = cursor.fetchone()[0]
+                self.humnodemap[node_id] = self.storage.fetch_atom('SELECT node_name FROM node_tbl WHERE node_id = %s', (node_id,))
             return node_id, self.humnodemap[node_id]
         def canonicalize_vlan(self, vlan):
             return int(node), int(node)
 
 
     class ExpressionParser(object):
+        ''' Parser for the custom queries (restrictions) on specific ip's, nets, nodes and vlans. '''
         def __init__(self, units):
             self.units = units
             self.parsere = re.compile(r'(?:(\(|\)|[^\s()]+)\s*)')
 
         def parse(self, expression):
-            ''' Rewrites and expression like 'net 1.2.3.4/5 and not vlan 4' to the appropriate SQL. '''
+            ''' Rewrites an expression like 'net 1.2.3.4/5 and not vlan 4' to the appropriate SQL. '''
             args, state, is_not, parens, query, human = self.parsere.findall(expression), None, None, 0, [], []
 
             for arg in args:
@@ -106,23 +126,15 @@ class Data(object):
 
 
     class Result(object):
-        def __init__(self, conn, sql_query):
-            self.conn = conn
+        def __init__(self, storage, sql_query):
+            self.storage = storage
             # FIXME
 
 
     def __init__(self, config):
         ''' Supply a Config object to get configuration from. '''
-        self.conn = db.connect(
-            host=config.storage_host,
-            port=int(config.storage_port),
-            user=config.storage_user,
-            passwd=config.storage_pass,
-            db=config.storage_dbase,
-            connect_timeout=30
-        )
-
-        self.units = Data.Units(self.conn)
+        self.storage = Data.Storage('my', config.storage_host, config.storage_port, config.storage_user, config.storage_pass, config.storage_dbase)
+        self.units = Data.Units(self.storage)
         self.expparser = Data.ExpressionParser(self.units)
 
     def get_raw_values(self, what, begin_date, end_date, query):
@@ -153,9 +165,7 @@ class Data(object):
         #print re.sub(r'\s+', ' ', ' '.join(q))
 
         # Execute query
-        cursor = self.conn.cursor()
-        cursor.execute(' '.join(q), d)
-        return cursor.fetchall()
+        return self.storage.fetch_all(' '.join(q), d)
 
     def get_values(self, what, begin_date, end_date, sample_size=lightcount.INTERVAL_SECONDS, **kwargs):
         ''' Get values written to database with non-stored values set to zero. (When values are not in the DB,
@@ -222,40 +232,42 @@ class Data(object):
         assert nth_percentile > 0 and nth_percentile <= 100
         assert what in ('in_bps', 'out_bps')
 
-        # Don't use inclusive values for end_date here
-        q = ['''SELECT SUM(%(what)s)
-                FROM sample_tbl
-                WHERE (%%(begin_date)s <= unixtime AND unixtime < %%(end_date)s)'''  % {'what': what}]
-        d = {'begin_date': mktime(begin_date.timetuple()), 'end_date': mktime(end_date.timetuple())}
-
-        # Add optional query restrictions
-        if query != '':
-            try:
-                sql = self.expparser.parse(query)
-            except Exception, e:
-                raise Exception('Parse error: %s' % e)
-            q.append('AND (%s)' % sql[0])
-            print 'FIXME: supplied query (without date):', sql[1]
-
-        # Add order by clause
-        q.append('''GROUP BY unixtime ORDER BY SUM(%(what)s)''' % {'what': what})
-
-        # Run query
-        cursor = self.conn.cursor()
-        cursor.execute(' '.join(q), d)
-
-        # Take 95th entry
-        period = mktime(end_date.timetuple()) - mktime(begin_date.timetuple())
-        sample_size = lightcount.INTERVAL_SECONDS
-        sample_count = int(round(period / sample_size)) # should be a nice int (except for leap secs?)
-        real_count = cursor.rowcount # real_count <= sample_count because we might not see some 0 values
-        sample95 = int(math.ceil(sample_count * float(nth_percentile) / 100.0) - 1) + real_count - sample_count
-        if sample95 < 0:
-            return 0
-        
-        cursor.scroll(sample95)
-        value = long(cursor.fetchone()[0])
-        return value
+#        # Don't use inclusive values for end_date here
+#        q = ['''SELECT SUM(%(what)s)
+#                FROM sample_tbl
+#                WHERE (%%(begin_date)s <= unixtime AND unixtime < %%(end_date)s)'''  % {'what': what}]
+#        d = {'begin_date': mktime(begin_date.timetuple()), 'end_date': mktime(end_date.timetuple())}
+#
+#        # Add optional query restrictions
+#        if query != '':
+#            try:
+#                sql = self.expparser.parse(query)
+#            except Exception, e:
+#                raise Exception('Parse error: %s' % e)
+#            q.append('AND (%s)' % sql[0])
+#            print 'FIXME: supplied query (without date):', sql[1]
+#
+#        # Add order by clause
+#        q.append('''GROUP BY unixtime ORDER BY SUM(%(what)s)''' % {'what': what})
+#
+#        # Run query
+#        
+#        cursor = self.conn.cursor()
+#        cursor.execute(' '.join(q), d)
+#
+#        # Take 95th entry
+#        period = mktime(end_date.timetuple()) - mktime(begin_date.timetuple())
+#        sample_size = lightcount.INTERVAL_SECONDS
+#        sample_count = int(round(period / sample_size)) # should be a nice int (except for leap secs?)
+#        real_count = cursor.rowcount # real_count <= sample_count because we might not see some 0 values
+#        sample95 = int(math.ceil(sample_count * float(nth_percentile) / 100.0) - 1) + real_count - sample_count
+#        if sample95 < 0:
+#            return 0
+#        
+#        cursor.scroll(sample95)
+#        value = long(cursor.fetchone()[0])
+#        return value
+        return 0
 
     def calculate_billing_value(self, month_date, **kwargs):
         ''' Calculate the 95th percentile over the provided period. Use the highest of the two

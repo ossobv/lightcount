@@ -37,7 +37,6 @@
   - add 95p lines for all (optional, supply command line option)
   - use command line options to select graph creation and/or textual
     output (summary)
-  - move db code into Data.Storage
   - move resultset usage into Data.Result
   - move GraphParameters out of graph.py
   - add proper legend (make human-output optional (otherwise show only
