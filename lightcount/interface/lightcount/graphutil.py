@@ -47,7 +47,6 @@ class BitsPerSecondFormatter(Formatter):
         return '%.2f %sbit/s' % (x, letter)
 
 
-
 class LinearBitsLocator(MultipleLocator):
     ''' Linear Locator for Y-axis. '''
 

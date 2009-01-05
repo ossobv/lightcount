@@ -17,6 +17,7 @@
 # along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 #=======================================================================
 
+
 def inet_atol(ip):
     ''' Converts the Internet host address IP from the standard numbers-and-dots notation into a long integer. '''
     ip_long = 0L
@@ -35,4 +36,3 @@ def bitfloor(number):
     for i in range(32):
         if (number >> (i + 1)) == 0:
             return (number >> i) << i
-

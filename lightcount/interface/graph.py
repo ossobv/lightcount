@@ -30,8 +30,8 @@ if __name__ == '__main__':
 
     optlist, args = getopt(
         sys.argv[1:],
-        'c:i:n:v:o:t:z:h',
-        ('config-file=', 'ip=', 'node=', 'vlan=', 'output-file=', 'period=', 'begin-date=', 'end-date=', 'time-zone=', 'log', 'linear', 'help', 'version')
+        'c:q:o:t:z:h',
+        ('config-file=', 'query=', 'output-file=', 'period=', 'begin-date=', 'end-date=', 'time-zone=', 'log', 'linear', 'help', 'version')
     )
 
     for key, val in optlist:
@@ -39,12 +39,8 @@ if __name__ == '__main__':
             if 'config_file' in scratchpad:
                 raise GetoptError('Configuration file name already specified!')
             scratchpad['config_file'] = val
-        elif key in ('-i', '--ip'):
-            graph_parameters.ips.append(val)
-        elif key in ('-n', '--node'):
-            graph_parameters.nodes.append(val)
-        elif key in ('-v', '--vlan'):
-            graph_parameters.vlans.append(val)
+        elif key in ('-q', '--query'):
+            graph_parameters.queries.append(val)
         elif key in ('-o', '--output-file'):
             if 'output_file' in scratchpad:
                 raise GetoptError('Output file name already specified!')
@@ -89,9 +85,10 @@ Period selection:
   -z, --time-zone=Z     use time zone name Z (dfl: %(Z)s)
 
 Value selection:
-  -n, --node=N          node N (may be specified multiple times)
-  -v, --vlan=V          vlan V (may be specified multiple times)
-  -i, --ip=I            IP address I (may be specified multiple times)
+  -q, --query=Q         specify and expression using (ip, net, node,
+                        vlan) and the operators (and, or, not and
+                        the parentheses) (may be specified multiple
+                        times)
 
 Graph options:
       --linear          display the graph with a linear scale (default)

@@ -16,13 +16,100 @@
 # You should have received a copy of the GNU General Public License
 # along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 #=======================================================================
-import MySQLdb as db, lightcount, math
+import MySQLdb as db, lightcount, math, re
 from lightcount import bits
 from lightcount.timeutil import *
 
 
 class Data(object):
     ''' LightCount data reader. Reads data from the SQL database found in the supplied Config object. '''
+
+    class Units(object):
+        def __init__(self, conn):
+            self.conn = conn
+            self.cannodemap = {}
+            self.humnodemap = {}
+        def canonicalize_ip4(self, ip):
+            try: ip = long(ip)
+            except (TypeError, ValueError): ip = bits.inet_atol(ip)
+            return ip, bits.inet_ltoa(ip)
+        def canonicalize_net4(self, net):
+            try: ip, mask = net.split('/')
+            except ValueError: raise ValueError('Specify IPv4 net as ip/mask')
+            ip, mask = bits.inet_atol(ip), long(mask)
+            if mask > 32: raise ValueError('Netmask cannot be higher than 32 for IPv4 addresses')
+            maskaway = ((1 << (32 - mask)) - 1)
+            maskedip = ip & ~maskaway
+            return maskedip, mask, '%s/%s' % (bits.inet_ltoa(ip), mask) #maskedip + maskaway
+        def canonicalize_node(self, node):
+            try: node_id = int(node)
+            except (TypeError, ValueError):
+                node = str(node)
+                if node not in self.cannodemap:
+                    cursor = self.conn.cursor()
+                    cursor.execute('SELECT node_id FROM node_tbl WHERE node_name = %s', (node,))
+                    self.cannodemap[node] = long(cursor.fetchone()[0])
+                node_id = self.cannodemap[node]
+            if node_id not in self.humnodemap:
+                cursor = self.conn.cursor()
+                cursor.execute('SELECT node_name FROM node_tbl WHERE node_id = %s', (node_id,))
+                self.humnodemap[node_id] = cursor.fetchone()[0]
+            return node_id, self.humnodemap[node_id]
+        def canonicalize_vlan(self, vlan):
+            return int(node), int(node)
+
+
+    class ExpressionParser(object):
+        def __init__(self, units):
+            self.units = units
+            self.parsere = re.compile(r'(?:(\(|\)|[^\s()]+)\s*)')
+
+        def parse(self, expression):
+            ''' Rewrites and expression like 'net 1.2.3.4/5 and not vlan 4' to the appropriate SQL. '''
+            args, state, is_not, parens, query, human = self.parsere.findall(expression), None, None, 0, [], []
+
+            for arg in args:
+                lowarg = arg.lower()
+                if state == None:
+                    if lowarg == 'not': is_not = not is_not
+                    elif lowarg in ('ip', 'net', 'node', 'vlan'): state = lowarg
+                    elif lowarg == '(': query.append('(') ; human.append('(') ; parens += 1
+                    else: assert False, 'Unexpected keyword %s' % arg
+                elif state in ('ip', 'net', 'node', 'vlan'):
+                    cmp_oper, cmp_name = (('=', ''), ('<>', 'not '))[bool(is_not)]
+                    if state == 'ip':
+                        ip, humip = self.units.canonicalize_ip4(arg)
+                        query.append('ip %s %s' % (cmp_oper, ip))
+                        human.append('%sip %s' % (cmp_name, humip))
+                    elif state == 'net':
+                        ip, mask, humipmask = self.units.canonicalize_net4(arg)
+                        query.append('(ip & %s) %s %s' % (mask, cmp_oper, ip))
+                        human.append('%snet %s' % (cmp_name, humipmask))
+                    elif state == 'node':
+                        node, humnode = self.units.canonicalize_node(arg)
+                        query.append('node_id %s %s' % (cmp_oper, node))
+                        human.append('%snode %s' % (cmp_name, humnode))
+                    elif state == 'vlan':
+                        vlan, humvlan = self.units.canonicalize_vlan(arg)
+                        query.append('vlan_id %s %s', (cmp_oper, vlan))
+                        human.append('%svlan %s' % (cmp_name, humvlan))
+                    state, is_not = 'oper', None
+                elif state == 'oper':
+                    if lowarg == ')': assert parens > 0, 'Uneven parentheses' ; query.append(')') ; human.append('(') ; parens -= 1
+                    elif lowarg in ('and', 'or'): query.append(lowarg.upper()) ; human.append(lowarg) ; state = None
+                    else: assert False, 'Unexpected keyword %s' % arg
+                else:
+                    assert False, 'Programming error'
+
+            assert state is 'oper' and parens == 0 and is_not is None, 'Unexpected end of expression'
+            return ' '.join(query), ' '.join(human)
+
+
+    class Result(object):
+        def __init__(self, conn, sql_query):
+            self.conn = conn
+            # FIXME
+
 
     def __init__(self, config):
         ''' Supply a Config object to get configuration from. '''
@@ -35,77 +122,31 @@ class Data(object):
             connect_timeout=30
         )
 
-    def canonicalize_node(self, node):
-        if node is None:
-            return None
-        try:
-            return int(node)
-        except:
-            cursor = self.conn.cursor()
-            cursor.execute('SELECT node_id FROM node_tbl WHERE node_name = %s', (node,))
-            return int(cursor.fetchone()[0])
+        self.units = Data.Units(self.conn)
+        self.expparser = Data.ExpressionParser(self.units)
 
-    def humanize_node(self, node):
-        if node is None:
-            return None
-        if not node.isdigit():
-            return node
-        node = int(node)
-        cursor = self.conn.cursor()
-        cursor.execute('SELECT node_name FROM node_tbl WHERE node_id = %s', (node,))
-        return '%s (%u)' % (cursor.fetchone()[0], node)
-
-    def canonicalize_vlan(self, vlan):
-        if vlan is None:
-            return None
-        return int(vlan)
-
-    def humanize_vlan(self, vlan):
-        if vlan is None:
-            return None
-        return str(vlan)
-
-    def canonicalize_ip(self, ip):
-        if ip is None:
-            return None
-        try:
-            return long(ip)
-        except:
-            return bits.inet_atol(ip)
-    
-    def humanize_ip(self, ip):
-        if ip is None:
-            return None
-        if not ip.isdigit():
-            return ip
-        return bits.inet_ltoa(ip)
-    
-    def get_nodes(self):
-        ''' Get all available nodes from the database. '''
-        return ret
-
-    def get_raw_values(self, what, begin_date, end_date, node=None, vlan=None, ip=None):
+    def get_raw_values(self, what, begin_date, end_date, query):
         ''' Get values written to database. Select only the 'what'-field, which can be ony of:
             'in_pps', 'in_bps', 'out_pps', 'out_bps', 'in_pps + out_pps' or 'in_bps + out_bps'.
-            The begin_date and end_date must be datetime objects. node, vlan and ip are
-            optional. Use get_values instead of this. '''
+            The begin_date and end_date must be datetime objects. Query may be empty.
+            Use get_values instead of this. '''
         assert what in ('in_pps', 'in_bps', 'out_pps', 'out_bps', 'in_pps + out_pps', 'in_bps + out_bps')
 
         # Create query (MySQLdb does not like %i/%d... %s should work fine though)
         # Get "inclusive" end_date.. we want both fence posts on the graph.
         q = ['''SELECT unixtime, SUM(%s)
                 FROM sample_tbl
-                WHERE %%(begin_date)s <= unixtime AND unixtime <= %%(end_date)s''' % (what,)]
+                WHERE (%%(begin_date)s <= unixtime AND unixtime <= %%(end_date)s)''' % (what,)]
         d = {'begin_date': mktime(begin_date.timetuple()), 'end_date': mktime(end_date.timetuple())}
 
         # Add optional query restrictions
-        node = self.canonicalize_node(node)
-        vlan = self.canonicalize_vlan(vlan)
-        ip = self.canonicalize_ip(ip)
-        for (id, name) in ((node, 'node_id'), (vlan, 'vlan_id'), (ip, 'ip')):
-            if id != None:
-                q.append('AND %(name)s = %%(%(name)s)s' % {'name': name})
-                d[name] = id
+        if query != '':
+            try:
+                sql = self.expparser.parse(query)
+            except Exception, e:
+                raise Exception('Parse error: %s' % e)
+            q.append('AND (%s)' % sql[0])
+            print 'FIXME: supplied query (without date):', sql[1]
 
         # Add query order
         q.append('''GROUP BY unixtime ORDER BY unixtime''')
@@ -149,7 +190,10 @@ class Data(object):
 
         return resampled_values
 
-    def get_values_name(self, node=None, vlan=None, ip=None):
+    def get_values_name(self, query):
+        import random
+        return 'FIXME %i' % random.randint(1, 200)
+        x = '''
         node = self.humanize_node(node)
         vlan = self.humanize_vlan(vlan)
         ip = self.humanize_ip(ip)
@@ -169,31 +213,55 @@ class Data(object):
         else:
             name = 'everything'
         return name
+        '''
 
-    def calculate_percentile(self, nth_percentile, what, begin_date, end_date, **kwargs):
+    def calculate_percentile(self, nth_percentile, what, begin_date, end_date, query):
         ''' Calculate the Nth percentile over the provided period. Usually ISPs use 95 as the percentile
             and a full month as the sampling period. '''
-        assert nth_percentile > 0 and nth_percentile < 100
-        values = self.get_values(what, begin_date, end_date, **kwargs)
-        values = values.values()
-        values.sort()
+        assert nth_percentile > 0 and nth_percentile <= 100
+        assert what in ('in_bps', 'out_bps')
 
-        # Remove all 'None'-values from the future
-        try:
-            while True:
-                values.remove(None)
-        except:
-            pass
+        # Don't use inclusive values for end_date here
+        q = ['''SELECT SUM(%(what)s)
+                FROM sample_tbl
+                WHERE (%%(begin_date)s <= unixtime AND unixtime < %%(end_date)s)'''  % {'what': what}]
+        d = {'begin_date': mktime(begin_date.timetuple()), 'end_date': mktime(end_date.timetuple())}
 
-        return values[int(math.ceil(len(values) / 100.0 * float(nth_percentile))) - 1]
+        # Add optional query restrictions
+        if query != '':
+            try:
+                sql = self.expparser.parse(query)
+            except Exception, e:
+                raise Exception('Parse error: %s' % e)
+            q.append('AND (%s)' % sql[0])
+            print 'FIXME: supplied query (without date):', sql[1]
+
+        # Add order by clause
+        q.append('''GROUP BY unixtime ORDER BY SUM(%(what)s)''' % {'what': what})
+
+        # Run query
+        cursor = self.conn.cursor()
+        cursor.execute(' '.join(q), d)
+
+        # Take 95th entry
+        period = mktime(end_date.timetuple()) - mktime(begin_date.timetuple())
+        sample_size = lightcount.INTERVAL_SECONDS
+        sample_count = int(round(period / sample_size)) # should be a nice int (except for leap secs?)
+        real_count = cursor.rowcount # real_count <= sample_count because we might not see some 0 values
+        sample95 = int(math.ceil(sample_count * float(nth_percentile) / 100.0) - 1) + real_count - sample_count
+        if sample95 < 0:
+            return 0
+        
+        cursor.scroll(sample95)
+        value = long(cursor.fetchone()[0])
+        return value
 
     def calculate_billing_value(self, month_date, **kwargs):
         ''' Calculate the 95th percentile over the provided period. Use the highest of the two
             (inbound and outbound) values. Keyword arguments are the same as get_raw_values takes. '''
         begin_date = datetime(month_date.year, month_date.month, 1, tzinfo=month_date.tzinfo)
-        end_date = datetime.fromtimestamp(mktime((month_date.year, month_date.month + 1, 1, 0, 0, 0, -1, -1, -1)) - 1, month_date.tzinfo)
-        return begin_date, end_date, max(
-            self.calculate_percentile(95, 'in_bps', begin_date, end_date, **kwargs),
-            self.calculate_percentile(95, 'out_bps', begin_date, end_date, **kwargs)
-        )
-
+        end_date = datetime.fromtimestamp(mktime((month_date.year, month_date.month + 1, 1, 0, 0, 0, -1, -1, -1)), month_date.tzinfo)
+        valin = self.calculate_percentile(95, 'in_bps', begin_date, end_date, **kwargs)
+        valout = self.calculate_percentile(95, 'out_bps', begin_date, end_date, **kwargs)
+        print 'FIXME: 95th p is: max(%s, %s) => %s' % (valin, valout, max(valin, valout))
+        return begin_date, end_date, max(valin, valout)

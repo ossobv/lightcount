@@ -69,12 +69,10 @@ class StandardGraph:
                     )
 
             # Draw 95th percentile line if we only show one IN/OUT graph
-            if self.params.only_one_value_source:
+            if len(self.params.queries) == 1:
                 billing_begin, billing_end, billing_value = self.data.calculate_billing_value(
                     self.params.begin_date, 
-                    node=self.params.nodes[0],
-                    vlan=self.params.vlans[0],
-                    ip=self.params.ips[0]
+                    query=self.params.queries[0]
                 )
                 xbegin = max(xvalues[0], date2num(billing_begin))
                 xend = min(xvalues[-1], date2num(billing_end))
@@ -174,12 +172,12 @@ class StandardGraph:
         return fig
 
     def __params_to_lines(self):
-        def get_data(what, node, vlan, ip, keys):
+        def get_data(what, query, keys):
             # Get the I/O values
             values = self.data.get_values(
                 what,
                 self.params.begin_date, self.params.end_date, self.params.sample_size,
-                node=node, vlan=vlan, ip=ip
+                query=query
             )
             # Convert to fig-values
             if len(keys) == 0:
@@ -199,29 +197,26 @@ class StandardGraph:
         # The list of lines
         lines = []
 
-        # If no or only one of IP/node/vlan is specified, we can show both input and output in the same graph.
-        if self.params.only_one_value_source:
-            assert len(self.params.ips) == 1 and len(self.params.nodes) == 1 and len(self.params.vlans) == 1
+        # If only one query is specified, we can show both input and output in the same graph.
+        if len(self.params.queries) == 1:
             colors = ['#008800', '#000088']
-            name = self.data.get_values_name(node=self.params.nodes[0], vlan=self.params.vlans[0], ip=self.params.ips[0])
+            name = self.data.get_values_name(query=self.params.queries[0])
             for what, name_suffix in (('in_bps', ' IN'), ('out_bps', ' OUT')):
                 lines.append({
                     'name': name + name_suffix,
                     'color': colors[len(lines)],
-                    'yvalues': get_data(what, self.params.nodes[0], self.params.vlans[0], self.params.ips[0], keys),
+                    'yvalues': get_data(what, self.params.queries[0], keys),
                 })
         # .. else, show multiple lines
         else:
             colors = ['#383838','#90ae61','#ffb400','#e70a8c','#00a2d0']
-            for node in self.params.nodes:
-                for vlan in self.params.vlans:
-                    for ip in self.params.ips:
-                        name = self.data.get_values_name(node=node, vlan=vlan, ip=ip)
-                        lines.append({
-                            'name': name,
-                            'color': colors[len(lines) < len(colors) and len(lines) or 0],
-                            'yvalues': get_data('in_bps + out_bps', node, vlan, ip, keys),
-                        })
+            for query in self.params.queries:
+                name = self.data.get_values_name(query=query)
+                lines.append({
+                    'name': name,
+                    'color': colors[len(lines) < len(colors) and len(lines) or 0],
+                    'yvalues': get_data('in_bps + out_bps', query, keys),
+                })
         # Return all lines
         return lines
 
@@ -246,7 +241,7 @@ class GraphParameters:
 
     def __init__(self):
         ''' Does not take any arguments. Modify the following parameters of the constructed object:
-            width, height, begin_date, end_date, ips, nodes and vlans. '''
+            width, height, begin_date, end_date, queries. '''
         self.width = 640
         self.height = 280
         self.dpi = 72.0
@@ -258,14 +253,10 @@ class GraphParameters:
 
         self.sample_size = lightcount.INTERVAL_SECONDS
 
-        self.nodes = [] # list of nodes, [None] means "any" (node-name or int)
-        self.vlans = [] # list of vlans, [None] means "any" (uint16)
-        self.ips = [] # list of IP's, [None] means "any" (may be a.b.c.d or uint32)
+        self.queries = [] # list of queries (can be an empty query for all)
 
         # Show a logarithmic scale
         self.logarithmic_scale = True
-        # When False, there is only one list of values, so we can show both in and out and the percentile
-        self.only_one_value_source = True
 
     def validate(self):
         ''' Call this before reading the values. It will 'normalize' the values so certain
@@ -283,16 +274,6 @@ class GraphParameters:
         assert (self.date_diff % self.sample_size) == 0
         assert self.begin_date < self.end_date
 
-        # Check IPs/nodes/vlans combinations (remove None's first)
-        for name in ('ips', 'nodes', 'vlans'):
-            obj = self.__dict__[name]
-            while None in obj:
-                obj.remove(None)
-            if len(obj) == 0:
-                obj.append(None)
-        # If there's only one line to show, set only_one_value_source to True.
-        if len(self.ips) == 1 and len(self.nodes) == 1 and len(self.vlans) == 1:
-            self.only_one_value_source = True
-        else:
-            self.only_one_value_source = False
-
+        # If there are no queries, set the empty query
+        if len(self.queries) == 0:
+            self.queries = ['']

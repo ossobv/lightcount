@@ -23,7 +23,6 @@ from pytz import timezone
 from time import mktime, time
 
 
-
 def timezone_default():
     ''' Tries to get current timezone. '''
     try:
