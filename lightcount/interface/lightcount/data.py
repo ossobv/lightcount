@@ -38,9 +38,9 @@ class Data(object):
             except ValueError: raise ValueError('Specify IPv4 net as ip/mask')
             ip, mask = bits.inet_atol(ip), long(mask)
             if mask > 32: raise ValueError('Netmask cannot be higher than 32 for IPv4 addresses')
-            maskaway = ((1 << (32 - mask)) - 1)
-            maskedip = ip & ~maskaway
-            return maskedip, mask, '%s/%s' % (bits.inet_ltoa(ip), mask) #maskedip + maskaway
+            maskkeep = ~((1 << (32 - mask)) - 1) & 0xffffffff
+            maskedip = ip & maskkeep
+            return maskedip, maskkeep, '%s/%s' % (bits.inet_ltoa(maskedip), mask) #maskedip + maskaway
         def canonicalize_node(self, node):
             try: node_id = int(node)
             except (TypeError, ValueError):
@@ -150,6 +150,7 @@ class Data(object):
 
         # Add query order
         q.append('''GROUP BY unixtime ORDER BY unixtime''')
+        #print re.sub(r'\s+', ' ', ' '.join(q))
 
         # Execute query
         cursor = self.conn.cursor()
