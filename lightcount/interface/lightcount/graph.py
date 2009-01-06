@@ -24,85 +24,91 @@ from matplotlib.figure import Figure
 from matplotlib.dates import date2num
 
 
-if not 'drange' in dir():
-    def drange(begin_date, end_date, interval):
-        ''' Does what matplotlib.dates.drange does but does not choke on daylight saving. '''
-        tz = begin_date.tzinfo
-        bu, eu = int(mktime(begin_date.timetuple())), int(mktime(end_date.timetuple()))
-        ival = interval.days * 86400 + interval.seconds
-        ret = []
-        for i in range(bu, eu, ival):
-            ret.append(date2num(datetime.fromtimestamp(i)))
-        return ret
-
-
-
 class StandardGraph:
-    ''' A graphical representation of the data. The graph_parameters object defines what to show. '''    
+    ''' A graphical representation of the the list of results. '''
 
-    def __init__(self, data, graph_parameters):
-        ''' Pass a valid data object and graph_parameters. The graph_parameters get validate()ed before use. '''
-        graph_parameters.validate()
-        self.data = data
-        self.params = graph_parameters
+    def __init__(self, width=640, height=280, result_list=None, show_billing_line=False, log_scale=False, use_packets_not_bytes=False):
+        ''' Pass at least a result_list (list of Data.Result objects) and optionally width, height, show_billing_line, log_scale. '''
+        assert width >= 100 and height >= 50 and result_list, 'Please supply proper parameters (width/height/result_list)'
+        self.period = result_list[0].get_period() # all periods are the same (optimization?)
+        self.width = int(width)
+        self.height = int(height)
+        self.dpi = 72.0
+        self.result_list = result_list
+        self.show_billing_line = bool(show_billing_line)
+        self.log_scale = bool(log_scale)
+        self.use_packets_not_bytes = bool(use_packets_not_bytes)
 
-    def __create_figure(self):
-        def plot_lines(ax, xvalues, lines):
-            ''' Draw lines from lines parameter on the graph. '''
-            for line in lines:
+    def create_figure(self):
+        def plot_lines(ax, xvalues, result_list):
+            def fixup_values(ax, data):
                 # If we're in log-mode, we can't draw on 0, so we change that to 1.
                 if ax.get_yscale() == 'log':
-                    yvalues = line['yvalues'][:]
-                    for i, y in enumerate(yvalues):
+                    data = list(data)
+                    for i, y in enumerate(data):
                         if y == 0:
-                            yvalues[i] = 1
+                            data[i] = 1
+                return data
+                
+            # If only one query is specified, we can show both input and output in the same graph.
+            show_input_output_separately = len(result_list) == 1
+
+            if show_input_output_separately:
+                colors = ['#008800', '#000088', '#ff0000'] # in, out, billing
+            else:
+                colors = ['#383838','#90ae61','#ffb400','#e70a8c','#00a2d0']
+
+            trafficlines = []
+            billingpoints = []
+            for result in result_list:
+                if show_input_output_separately:
+                    trafficlines.append({'name': 'input FIXME', 'color': colors[len(trafficlines)], 'data': fixup_values(ax, result.get_in_bps())})
+                    trafficlines.append({'name': 'output FIXME', 'color': colors[len(trafficlines)], 'data': fixup_values(ax, result.get_out_bps())})
+                    if self.period.get_period() == 'month' and self.show_billing_line:
+                        billingpoints.append({'name': '95p FIXME', 'color': colors[len(trafficlines)],
+                                              'data': fixup_values(ax, (result.get_billing_value(),))[0]})
                 else:
-                    yvalues = line['yvalues']
+                    trafficlines.append({'name': 'in/out FIXME', 'color': colors[len(trafficlines)], 'data': fixup_values(ax, result.get_io_bps())})
+                    if self.period.get_period() == 'month' and self.show_billing_line:
+                        billingpoints.append({'name': '95p FIXME', 'color': colors[len(trafficlines)-1],
+                                              'data': fixup_values(ax, (result.get_billing_value(),))[0]})
+
+            # Draw the traffic lines
+            for line in trafficlines:
                 # Draw the line, unless there are only None-valus
-                if len(set(yvalues) - set((None,))) != 0:
-                    ax.plot(
-                        xvalues,
-                        yvalues, color=line['color'],
-                        linewidth=2.00,
-                        alpha=0.5,
-                        label=line['name']
-                    )
+                if len(set(line['data']) - set((None,))) != 0:
+                    ax.plot(xvalues, line['data'], color=line['color'], linewidth=2.00, alpha=0.5, label=line['name'])
 
-            # Draw 95th percentile line if we only show one IN/OUT graph
-            if len(self.params.queries) == 1:
-                billing_begin, billing_end, billing_value = self.data.calculate_billing_value(
-                    self.params.begin_date, 
-                    query=self.params.queries[0]
-                )
-                xbegin = max(xvalues[0], date2num(billing_begin))
-                xend = min(xvalues[-1], date2num(billing_end))
-
-                label = '95th P is at %s' % (graphutil.BitsPerSecondFormatter()(billing_value),)
-                if ax.get_yscale() == 'log' and billing_value == 0:
-                    billing_value = 1
-                ax.plot((xbegin, xend), (billing_value, billing_value), color='#ff0000', linewidth='1.00', label=label)
+            # Draw the percentile lines
+            billing_xvalues = (max(xvalues[0], date2num(self.period.get_begin_date())), min(xvalues[-1], date2num(self.period.get_end_date())))
+            for point in billingpoints:
+                ax.plot(billing_xvalues, (point['data'], point['data']), color=point['color'], linewidth='1.00', label=point['name'])
 
         def format_x_axis(ax):
             ''' Draw vertical lines and line identifiers. '''
-            if self.params.date_diff <= 43200:
-                loc = graphutil.MinuteLocator(byminute=(0, 30), tz=self.params.begin_date.tzinfo)
-                fmt = graphutil.DateFormatter('%H:%M %z', tz=self.params.begin_date.tzinfo)
-            elif self.params.date_diff <= 90000:
-                loc = graphutil.HourLocator(interval=2, tz=self.params.time_zone)
-                fmt = graphutil.DateFormatter('%Hh', tz=self.params.begin_date.tzinfo)
-            elif self.params.date_diff <= 7 * 86400:
-                loc = graphutil.HourLocator(interval=24)
-                fmt = graphutil.DateFormatter('%d/%m', tz=self.params.begin_date.tzinfo)
-            elif self.params.date_diff <= 50 * 86400:
-                loc = graphutil.WeekdayLocator(graphutil.MONDAY)
-                fmt = graphutil.DateFormatter('%a %d %b', tz=self.params.begin_date.tzinfo)
+            period = self.period
+            date_diff = period.get_interval()
+            tzinfo = period.get_tzinfo()
+
+            if date_diff <= 43200:
+                loc = graphutil.MinuteLocator(byminute=(0, 30), tz=tzinfo)
+                fmt = graphutil.DateFormatter('%H:%M %z', tz=tzinfo)
+            elif date_diff <= 90000:
+                loc = graphutil.HourLocator(interval=2, tz=tzinfo)
+                fmt = graphutil.DateFormatter('%Hh', tz=tzinfo)
+            elif date_diff <= 7 * 86400:
+                loc = graphutil.HourLocator(interval=24, tz=tzinfo)
+                fmt = graphutil.DateFormatter('%d/%m', tz=tzinfo)
+            elif date_diff <= 50 * 86400:
+                loc = graphutil.WeekdayLocator(graphutil.MONDAY, tz=tzinfo)
+                fmt = graphutil.DateFormatter('%a %d %b', tz=tzinfo)
             else:
-                loc = graphutil.MonthLocator()
-                fmt = graphutil.DateFormatter('%b \'%y', tz=self.params.begin_date.tzinfo)
+                loc = graphutil.MonthLocator(tz=tzinfo)
+                fmt = graphutil.DateFormatter('%b \'%y', tz=tzinfo)
             ax.xaxis.set_major_locator(loc)
             ax.xaxis.set_major_formatter(fmt)
             ax.xaxis.set_ticks_position('top')
-            ax.set_xlim(xmin=date2num(self.params.begin_date), xmax=date2num(self.params.end_date))
+            ax.set_xlim(xmin=date2num(period.get_begin_date()), xmax=date2num(period.get_end_date()))
             for label in ax.get_xticklabels():
                 label.set_fontsize(10)
             for tick in ax.yaxis.get_major_ticks():
@@ -142,27 +148,16 @@ class StandardGraph:
 
 
         # Initialize figure
-        fig = Figure(
-            figsize=(self.params.width / self.params.dpi, self.params.height / self.params.dpi),
-            dpi=self.params.dpi
-        )
+        fig = Figure(figsize=(self.width / self.dpi, self.height / self.dpi), dpi=self.dpi)
         canvas = FigureCanvas(fig)
-        ax = fig.add_axes([4 / self.params.dpi, 4 / self.params.dpi, 60 / self.params.dpi, 60 / self.params.dpi], frame_on=False)
+        ax = fig.add_axes([4 / self.dpi, 4 / self.dpi, 60 / self.dpi, 60 / self.dpi], frame_on=False)
 
         # Select log/normal scale
-        if self.params.logarithmic_scale:
+        if self.log_scale:
             ax.set_yscale('log')
 
         # Draw lines, axes, legend and grid
-        plot_lines(
-            ax,
-            drange(
-                self.params.begin_date,
-                self.params.end_date + timedelta(seconds=1), # +1 to get "inclusive" end_date
-                timedelta(seconds=self.params.sample_size)
-            ),
-            self.__params_to_lines()
-        )
+        plot_lines(ax, self.period.get_mpl_sample_times(), self.result_list)
         format_x_axis(ax)
         format_y_axis(ax)
         format_legend(ax)
@@ -171,109 +166,15 @@ class StandardGraph:
         # It is done
         return fig
 
-    def __params_to_lines(self):
-        def get_data(what, query, keys):
-            # Get the I/O values
-            values = self.data.get_values(
-                what,
-                self.params.begin_date, self.params.end_date, self.params.sample_size,
-                query=query
-            )
-            # Convert to fig-values
-            if len(keys) == 0:
-                keys.extend(values.keys())
-                keys.sort()
-            yvalues = []
-            for key in keys:
-                if values[key] != None:
-                    yvalues.append(values[key] * 8) # *8 to get bits
-                else:
-                    yvalues.append(None)
-            # Get name
-            return yvalues
-
-        # Keys are the same for each line
-        keys = []
-        # The list of lines
-        lines = []
-
-        # If only one query is specified, we can show both input and output in the same graph.
-        if len(self.params.queries) == 1:
-            colors = ['#008800', '#000088']
-            name = self.data.get_values_name(query=self.params.queries[0])
-            for what, name_suffix in (('in_bps', ' IN'), ('out_bps', ' OUT')):
-                lines.append({
-                    'name': name + name_suffix,
-                    'color': colors[len(lines)],
-                    'yvalues': get_data(what, self.params.queries[0], keys),
-                })
-        # .. else, show multiple lines
-        else:
-            colors = ['#383838','#90ae61','#ffb400','#e70a8c','#00a2d0']
-            for query in self.params.queries:
-                name = self.data.get_values_name(query=query)
-                lines.append({
-                    'name': name,
-                    'color': colors[len(lines) < len(colors) and len(lines) or 0],
-                    'yvalues': get_data('in_bps + out_bps', query, keys),
-                })
-        # Return all lines
-        return lines
-
     def output(self):
         ''' Return the image data as binary png data. '''
         import os
         tmpfile = os.tmpfile()
         self.write(tmpfile)
         tmpfile.seek(0)
-        return tmpfile.read()
+        return tmpfile.read() # destructor should clean up any would-be temporary files
 
     def write(self, filename):
         ''' Write the image to filename on the local file system. '''
-        f = self.__create_figure()
-        f.savefig(filename, dpi=self.params.dpi)
-
-
-
-class GraphParameters:
-    ''' Chart generation parameters/options. Modify/append to the parameters to customize the
-        generated graph. '''
-
-    def __init__(self):
-        ''' Does not take any arguments. Modify the following parameters of the constructed object:
-            width, height, begin_date, end_date, queries. '''
-        self.width = 640
-        self.height = 280
-        self.dpi = 72.0
-
-        self.date_diff = None
-        self.time_zone = timezone_default()
-        self.begin_date = None
-        self.end_date = datetime.now(self.time_zone)
-
-        self.sample_size = lightcount.INTERVAL_SECONDS
-
-        self.queries = [] # list of queries (can be an empty query for all)
-
-        # Show a logarithmic scale
-        self.logarithmic_scale = True
-
-    def validate(self):
-        ''' Call this before reading the values. It will 'normalize' the values so certain
-            assumptions about the parameters hold. Read from the validated ChartParameters
-            when you wish to display what the 'real' parameters used for the Chart are. '''
-        assert (self.sample_size % lightcount.INTERVAL_SECONDS) == 0
-
-        # If begin time is not set, assume period of a month and set end_date on the next month
-        if self.begin_date == None:
-            self.begin_date = datetime(self.end_date.year, self.end_date.month, 1, tzinfo=self.time_zone)
-            self.end_date = datetime(self.begin_date.year, self.begin_date.month + 1, 1, tzinfo=self.time_zone)
-
-        # Set date difference
-        self.date_diff = long(mktime(self.end_date.timetuple())) - long(mktime(self.begin_date.timetuple()))
-        assert (self.date_diff % self.sample_size) == 0
-        assert self.begin_date < self.end_date
-
-        # If there are no queries, set the empty query
-        if len(self.queries) == 0:
-            self.queries = ['']
+        f = self.create_figure()
+        f.savefig(filename, dpi=self.dpi)

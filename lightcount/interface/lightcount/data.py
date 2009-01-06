@@ -21,6 +21,18 @@ from lightcount import bits
 from lightcount.timeutil import *
 
 
+def mpl_range(begin_date, end_date, interval):
+    ''' Does what matplotlib.dates.drange does but does not choke on daylight saving. '''
+    from matplotlib.dates import date2num
+    timezone = begin_date.tzinfo
+    beginsec, endsec = int(mktime(begin_date.timetuple())), int(mktime(end_date.timetuple()))
+    intervalsecs = interval.days * 86400 + interval.seconds
+    ret = []
+    for i in range(beginsec, endsec, intervalsecs):
+        ret.append(date2num(datetime.fromtimestamp(i)))
+    return ret
+
+
 class Data(object):
     ''' LightCount data reader. Reads data from the SQL database found in the supplied Config object. '''
 
@@ -44,7 +56,7 @@ class Data(object):
             cursor = self.execute(*args, **kwargs)
             assert cursor.rowcount == 1 or cursor.rowcount == -1, 'Not exactly one row was returned'
             return cursor.fetchone()
-            
+
 
     class Units(object):
         ''' Conversion to and from internal units. '''
@@ -86,6 +98,9 @@ class Data(object):
 
         def parse(self, expression):
             ''' Rewrites an expression like 'net 1.2.3.4/5 and not vlan 4' to the appropriate SQL. '''
+            if expression == '':
+                return None, 'everything'
+    
             args, state, is_not, parens, query, human = self.parsere.findall(expression), None, None, 0, [], []
 
             for arg in args:
@@ -125,10 +140,179 @@ class Data(object):
             return ' '.join(query), ' '.join(human)
 
 
+    class Period(object):
+        def __init__(self, begin_date=None, end_date=None, period=None, time_zone=None):
+            if time_zone == None:
+                time_zone = timezone_default()
+            if begin_date is not None and 'timetuple' not in dir(begin_date):
+                begin_date = parse_datetime(begin_date, time_zone)
+            if end_date is not None and 'timetuple' not in dir(end_date):
+                end_date = parse_datetime(end_date, time_zone)
+            
+            # We can't have all three values set
+            none_count = len([n for n in (begin_date, end_date, period) if n is None])
+            assert none_count >= 1, 'Only two of begin_date/end_date/period may be set.'
+            # Set at least two
+            while none_count > 1:
+                if period is None: period = 'month' ; none_count -= 1
+                elif end_date is None: end_date = datetime.now(time_zone) ; none_count -= 1 ; assert none_count == 1
+        
+            self.time_zone = time_zone
+            self.period = period
+            self.begin_date, self.end_date = datetimes_from_datetime_and_period(begin_date, end_date, period)
+        def canonical_begin_date(self):
+            return long(mktime(self.begin_date.timetuple()))
+        def canonical_end_date(self):
+            return long(mktime(self.end_date.timetuple()))
+        def get_begin_date(self):
+            return self.begin_date
+        def get_end_date(self):
+            return self.end_date
+        def get_period(self):
+            return self.period
+        def get_interval(self):
+            return self.canonical_end_date() - self.canonical_begin_date()
+        def get_tzinfo(self):
+            return self.begin_date.tzinfo
+        def get_sample_times(self):
+            return range(self.canonical_begin_date(), self.canonical_end_date() + 1, lightcount.INTERVAL_SECONDS)
+        def get_mpl_sample_times(self):
+            return mpl_range(self.begin_date, self.end_date + timedelta(seconds=1), timedelta(seconds=lightcount.INTERVAL_SECONDS))
+        def __str__(self):
+            return '<period (%s) between %s and %s>' % (self.period, self.begin_date, self.end_date)
+
+            
     class Result(object):
-        def __init__(self, storage, sql_query):
+        def __init__(self, storage, expression_parser, query, period): # append calc_95p option here
             self.storage = storage
-            # FIXME
+            self.query, self.human_query = expression_parser.parse(query)
+            self.period = period
+            self.values = None
+            self.billing_percentile = 95
+            self.cache = {}
+        def get_period(self):
+            return self.period
+        def load_values(self):
+            if self.values is None:
+                self.values = self.get_values_from_db()
+        def get_values_from_db(self):
+            ''' Get values from database. '''
+            # Create query (MySQLdb does not like %i/%d... %s should work fine though)
+            # Get "inclusive" end_date.. we want both fence posts on the graph.
+            q = ['''SELECT unixtime, SUM(in_pps), SUM(out_pps), SUM(in_bps), SUM(out_bps)
+                    FROM sample_tbl
+                    WHERE (%(begin_date)s <= unixtime AND unixtime <= %(end_date)s)''']
+            d = {'begin_date': self.period.canonical_begin_date(), 'end_date': self.period.canonical_end_date()}
+            # Add optional query restrictions
+            if self.query != None:
+                q.append('AND (%s)' % self.query)
+            # Add query order
+            q.append('''GROUP BY unixtime ORDER BY unixtime''')
+            # Execute query
+            values = self.storage.fetch_all(' '.join(q), d)
+            #print '\n(', re.sub(r'\s+', ' ', ' '.join(q) % d), ' -- ', self.human_query, ')\n'
+            # Make sure every sample in the period interval exists (0 if not found)
+            now = time() - lightcount.INTERVAL_SECONDS # can't predict data in future
+            new_values = [
+                (long(t), (0L, None)[t >= now], (0L, None)[t >= now], (0L, None)[t >= now], (0L, None)[t >= now])
+                for t in self.period.get_sample_times()
+            ]
+            i = 0
+            for t, in_pps, out_pps, in_bps, out_bps in values:
+                while new_values[i][0] < t: i += 1
+                assert new_values[i][0] == t
+                new_values[i] = (long(t), long(in_pps), long(out_pps), long(in_bps), long(out_bps))
+            # Return the values
+            return new_values
+
+        def get_times(self):
+            if 'times' not in self.cache:
+                self.load_values()
+                self.cache['times'] = tuple([t for t, _, _, _, _ in self.values])
+            return self.cache['times']
+
+        def get_in_bps(self):
+            if 'in_bps' not in self.cache:
+                self.load_values()
+                in_bps = [i for t, _, _, i, o in self.values]
+                for i in range(len(in_bps)):
+                    if in_bps[i] is not None: in_bps[i] <<= 3 # bits => *8
+                self.cache['in_bps'] = tuple(in_bps)
+            return self.cache['in_bps']
+        def get_out_bps(self):
+            if 'out_bps' not in self.cache:
+                self.load_values()
+                out_bps = [o for t, _, _, i, o in self.values]
+                for i in range(len(out_bps)):
+                    if out_bps[i] is not None: out_bps[i] <<= 3 # bits => *8
+                self.cache['out_bps'] = tuple(out_bps)
+            return self.cache['out_bps']
+        def get_io_bps(self):
+            if 'io_bps' not in self.cache:
+                self.load_values()
+                io_bps = []
+                input, output = self.get_in_bps(), self.get_out_bps()
+                for i in range(len(input)):
+                    if input[i] is None or output[i] is None: io_bps.append(None)
+                    else: io_bps.append(input[i] + output[i])
+                self.cache['io_bps'] = tuple(io_bps)
+            return self.cache['io_bps']
+
+        def get_in_pps(self):
+            if 'in_pps' not in self.cache:
+                self.load_values()
+                self.cache['in_pps'] = tuple([i for t, i, o, _, _ in self.values])
+            return self.cache['in_pps']
+        def get_out_pps(self):
+            if 'out_pps' not in self.cache:
+                self.load_values()
+                self.cache['out_pps'] = tuple([o for t, i, o, _, _ in self.values])
+            return self.cache['out_pps']
+        def get_io_pps(self):
+            if 'io_pps' not in self.cache:
+                self.load_values()
+                io_pps = []
+                input, output = self.get_in_pps(), self.get_out_pps()
+                for i in range(len(input)):
+                    if input[i] is None or output[i] is None: io_pps.append(None)
+                    else: io_pps.append(input[i] + output[i])
+                self.cache['io_pps'] = tuple(io_pps)
+            return self.cache['io_pps']
+
+        def get_max_io_bps(self):
+            io_bps = max(self.get_io_bps())
+            self.load_values()
+            for t, _, _, i, o in self.values:
+                if 8 * (i + o) == io_bps:
+                    return datetime.fromtimestamp(t, self.period.get_tzinfo()), i, o
+            assert False, 'Programming error'
+        def get_max_io_pps(self):
+            io_pps = max(self.get_io_pps())
+            self.load_values()
+            for t, i, o, _, _ in self.values:
+                if i + o == io_pps:
+                    return datetime.fromtimestamp(t, self.period.get_tzinfo()), i, o
+            assert False, 'Programming error'
+            
+        def get_billing_value(self):
+            if self.period.get_period() != 'month': return None
+            if 'billing_value' not in self.cache:
+                self.load_values()
+                yin = list(self.get_in_bps())
+                yin.pop() # drop fencepost for next month
+                yin.sort()
+                yout = list(self.get_out_bps())
+                yout.pop() # drop fencepost for next month
+                yout.sort()
+                sample95 = int(math.ceil(len(yin) * float(self.billing_percentile) / 100.0) - 1)
+                yin95, yout95 = yin[sample95], yout[sample95]
+                if yin95 is None: yin95 = 0L
+                if yout95 is None: yout95 = 0L
+                self.cache['billing_value'] = max(yin95, yout95)
+            return self.cache['billing_value']
+
+        def __str__(self):
+            return '<result for query \'%s\' over period %s>' % (self.human_query, self.period)
 
 
     def __init__(self, config):
@@ -137,144 +321,12 @@ class Data(object):
         self.units = Data.Units(self.storage)
         self.expparser = Data.ExpressionParser(self.units)
 
-    def get_raw_values(self, what, begin_date, end_date, query):
-        ''' Get values written to database. Select only the 'what'-field, which can be ony of:
-            'in_pps', 'in_bps', 'out_pps', 'out_bps', 'in_pps + out_pps' or 'in_bps + out_bps'.
-            The begin_date and end_date must be datetime objects. Query may be empty.
-            Use get_values instead of this. '''
-        assert what in ('in_pps', 'in_bps', 'out_pps', 'out_bps', 'in_pps + out_pps', 'in_bps + out_bps')
+    def parse_period(self, begin_date=None, end_date=None, period=None, time_zone=None):
+        return Data.Period(begin_date=begin_date, end_date=end_date, period=period, time_zone=time_zone)
 
-        # Create query (MySQLdb does not like %i/%d... %s should work fine though)
-        # Get "inclusive" end_date.. we want both fence posts on the graph.
-        q = ['''SELECT unixtime, SUM(%s)
-                FROM sample_tbl
-                WHERE (%%(begin_date)s <= unixtime AND unixtime <= %%(end_date)s)''' % (what,)]
-        d = {'begin_date': mktime(begin_date.timetuple()), 'end_date': mktime(end_date.timetuple())}
-
-        # Add optional query restrictions
-        if query != '':
-            try:
-                sql = self.expparser.parse(query)
-            except Exception, e:
-                raise Exception('Parse error: %s' % e)
-            q.append('AND (%s)' % sql[0])
-            print 'FIXME: supplied query (without date):', sql[1]
-
-        # Add query order
-        q.append('''GROUP BY unixtime ORDER BY unixtime''')
-        #print re.sub(r'\s+', ' ', ' '.join(q))
-
-        # Execute query
-        return self.storage.fetch_all(' '.join(q), d)
-
-    def get_values(self, what, begin_date, end_date, sample_size=lightcount.INTERVAL_SECONDS, **kwargs):
-        ''' Get values written to database with non-stored values set to zero. (When values are not in the DB,
-            it means that they didn't do traffic. So zero is the correct value to return.)
-            See get_raw_values for the arguments. Be aware that changing sample_size will flatten the graph. '''
-        assert (sample_size % 300) == 0
-        samples_divisor = float(sample_size / lightcount.INTERVAL_SECONDS) # want floating average
-        begin_date_u, end_date_u = int(mktime(begin_date.timetuple())), int(mktime(end_date.timetuple()))
-        assert (begin_date_u % sample_size) == 0
-
-        # We can't predict lines in the future, compare times with now..
-        # This will break when your time is not in sync >:-)
-        now = time() - lightcount.INTERVAL_SECONDS
-
-        # Init sampled_values (use "inclusive" end_date (+1))
-        resampled_values = {}
-        for date in range(begin_date_u, end_date_u + 1, sample_size):
-            if date < now:
-                resampled_values[date] = 0
-            else:
-                resampled_values[date] = None
-        # Add values
-        raw_values = self.get_raw_values(what, begin_date, end_date, **kwargs)
-        for row in raw_values:
-            while row[0] >= begin_date_u + sample_size:
-                begin_date_u += sample_size
-            if resampled_values[begin_date_u] != None: # Can happen when time is out of sync...
-                resampled_values[begin_date_u] += long(row[1])
-        # Average values
-        if samples_divisor != 1:
-            for key in resampled_values:
-                resampled_values[key] /= samples_divisor
-
-        return resampled_values
-
-    def get_values_name(self, query):
-        import random
-        return 'FIXME %i' % random.randint(1, 200)
-        x = '''
-        node = self.humanize_node(node)
-        vlan = self.humanize_vlan(vlan)
-        ip = self.humanize_ip(ip)
-
-        if ip != None:
-            name = ip
-            if vlan != None: 
-                name += ' with vlan# %s' % (vlan,)
-            if node != None:
-                name += ' MON %s' % (node,)
-        elif vlan != None:
-            name = 'vlan# %s' % (vlan,)
-            if node != None:
-                name += ' MON %s' % (node,)
-        elif node != None:
-            name = 'MON %s' % (node,)
-        else:
-            name = 'everything'
-        return name
-        '''
-
-    def calculate_percentile(self, nth_percentile, what, begin_date, end_date, query):
-        ''' Calculate the Nth percentile over the provided period. Usually ISPs use 95 as the percentile
-            and a full month as the sampling period. '''
-        assert nth_percentile > 0 and nth_percentile <= 100
-        assert what in ('in_bps', 'out_bps')
-
-#        # Don't use inclusive values for end_date here
-#        q = ['''SELECT SUM(%(what)s)
-#                FROM sample_tbl
-#                WHERE (%%(begin_date)s <= unixtime AND unixtime < %%(end_date)s)'''  % {'what': what}]
-#        d = {'begin_date': mktime(begin_date.timetuple()), 'end_date': mktime(end_date.timetuple())}
-#
-#        # Add optional query restrictions
-#        if query != '':
-#            try:
-#                sql = self.expparser.parse(query)
-#            except Exception, e:
-#                raise Exception('Parse error: %s' % e)
-#            q.append('AND (%s)' % sql[0])
-#            print 'FIXME: supplied query (without date):', sql[1]
-#
-#        # Add order by clause
-#        q.append('''GROUP BY unixtime ORDER BY SUM(%(what)s)''' % {'what': what})
-#
-#        # Run query
-#        
-#        cursor = self.conn.cursor()
-#        cursor.execute(' '.join(q), d)
-#
-#        # Take 95th entry
-#        period = mktime(end_date.timetuple()) - mktime(begin_date.timetuple())
-#        sample_size = lightcount.INTERVAL_SECONDS
-#        sample_count = int(round(period / sample_size)) # should be a nice int (except for leap secs?)
-#        real_count = cursor.rowcount # real_count <= sample_count because we might not see some 0 values
-#        sample95 = int(math.ceil(sample_count * float(nth_percentile) / 100.0) - 1) + real_count - sample_count
-#        if sample95 < 0:
-#            return 0
-#        
-#        cursor.scroll(sample95)
-#        value = long(cursor.fetchone()[0])
-#        return value
-        return 0
-
-    def calculate_billing_value(self, month_date, **kwargs):
-        ''' Calculate the 95th percentile over the provided period. Use the highest of the two
-            (inbound and outbound) values. Keyword arguments are the same as get_raw_values takes. '''
-        begin_date = datetime(month_date.year, month_date.month, 1, tzinfo=month_date.tzinfo)
-        end_date = datetime.fromtimestamp(mktime((month_date.year, month_date.month + 1, 1, 0, 0, 0, -1, -1, -1)), month_date.tzinfo)
-        valin = self.calculate_percentile(95, 'in_bps', begin_date, end_date, **kwargs)
-        valout = self.calculate_percentile(95, 'out_bps', begin_date, end_date, **kwargs)
-        print 'FIXME: 95th p is: max(%s, %s) => %s' % (valin, valout, max(valin, valout))
-        return begin_date, end_date, max(valin, valout)
+    def parse_queries(self, period, queries=None):
+        queries = queries or ['']
+        result_list = []
+        for query in queries:
+            result_list.append(Data.Result(self.storage, self.expparser, query, period))
+        return result_list

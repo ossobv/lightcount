@@ -17,21 +17,25 @@
 # You should have received a copy of the GNU General Public License
 # along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 #=======================================================================
+
+
+class ParameterError(Exception):
+    pass
+    
             
-if __name__ == '__main__':
-    import sys
-    from lightcount import Config
-    from lightcount.timeutil import *
+def main(cli_arguments):
+    from getopt import gnu_getopt as getopt
+    from lightcount import Config, graphutil
+    from lightcount.timeutil import timezone_default, known_periods
     from lightcount.data import Data
-    from lightcount.graph import StandardGraph, GraphParameters
-    from getopt import gnu_getopt as getopt, GetoptError
-    graph_parameters = GraphParameters()
-    scratchpad = {'date': {}}
+    from lightcount.graph import StandardGraph
+    scratchpad = {'date': {}, 'queries': []}
 
     optlist, args = getopt(
-        sys.argv[1:],
-        'c:q:o:t:z:h',
-        ('config-file=', 'query=', 'output-file=', 'period=', 'begin-date=', 'end-date=', 'time-zone=', 'log', 'linear', 'help', 'version')
+        cli_arguments,
+        'c:q:g:t:z:h',
+        ('config-file=', 'query=', 'write-graph=', 'time-zone=', 'period=', 'begin-date=',
+                'end-date=', 'log', 'linear', 'help', 'version')
     )
 
     for key, val in optlist:
@@ -40,11 +44,11 @@ if __name__ == '__main__':
                 raise GetoptError('Configuration file name already specified!')
             scratchpad['config_file'] = val
         elif key in ('-q', '--query'):
-            graph_parameters.queries.append(val)
-        elif key in ('-o', '--output-file'):
-            if 'output_file' in scratchpad:
-                raise GetoptError('Output file name already specified!')
-            scratchpad['output_file'] = val
+            scratchpad['queries'].append(val)
+        elif key in ('-g', '--write-graph'):
+            if 'graph_file' in scratchpad:
+                raise GetoptError('Output graph file name already specified!')
+            scratchpad['graph_file'] = val
         elif key in ('-z', '--time-zone'):
             if 'time_zone' in scratchpad:
                 raise GetoptError('Time zone already specified!')
@@ -67,16 +71,17 @@ if __name__ == '__main__':
                 raise GetoptError('End date already specified!')
             scratchpad['date']['end_date'] = val
         elif key in ('--linear', '--log'):
-            if 'logarithmic_scale' in scratchpad:
+            if 'log_scale' in scratchpad:
                 raise GetoptError('Specify either --linear or --log and do it once.')
-            scratchpad['logarithmic_scale'] = key == '--log'
+            scratchpad['log_scale'] = key == '--log'
         elif key in ('-h', '--help'):
-            print '''Usage: graph.py OPTIONS
-Draws a graph from the lightcount data.
+            print '''Usage: FIXME.py OPTIONS
+Does some XXX YYY with the lightcount data.. blah.
 
 File selection:
-  -c, --config-file=F   read config file F (dfl: lightcount.conf)
-  -o, --output-file=F   write output png as F (dfl: graph.png)
+  -c, --config-file=F   read config file F (dfl: ./lightcount.conf)
+  -g, --draw-graph=F    write output png as F (it normally only writes
+                        statistics to stdout)
 
 Period selection:
   -t, --period=P        period P: %(Ps)s (dfl: month)
@@ -85,69 +90,100 @@ Period selection:
   -z, --time-zone=Z     use time zone name Z (dfl: %(Z)s)
 
 Value selection:
-  -q, --query=Q         specify and expression using (ip, net, node,
+  -q, --query=Q         specify an expression Q using (ip, net, node,
                         vlan) and the operators (and, or, not and
                         the parentheses) (may be specified multiple
                         times)
+
+Automatic selection (you may specify at most one query):
+  -I, --top-ips=N       show the top N byte users by IP address
+  -N, --top-nodes=N     show the top N byte users by node
+  -V, --top-vlans=N     show the top N byte users by VLAN
 
 Graph options:
       --linear          display the graph with a linear scale (default)
       --log             display the graph with a logarithmic scale
 
 Nodes may specified as a node name or a node id. IP addresses may be specified
-in the normal numbers-and-dots notation or as an unsigned integer.
+in the normal numbers-and-dots notation or as an unsigned integer. Nets are
+specified as IP addresses with a trailing slash and a netmask number.
 ''' % {'Ps': ', '.join(known_periods()), 'Z': timezone_default()}
             sys.exit(0)
         elif key == '--version':
-            print 'chart.py v0.1'
+            print 'FIXME.py v0.1'
         else:
-            assert False
+            assert False, 'Programming error'
 
     # Check invalid options
     if len(args) != 0:
         raise GetoptError('This program does not take non-option arguments.')
     if len(scratchpad['date']) == 3:
-        raise GetoptError('Specify either one date and a period, or two dates.')
+        raise GetoptError('Specify at most one date and a period or two dates.')
         
     # Set defaults
     if 'config_file' not in scratchpad:
         scratchpad['config_file'] = 'lightcount.conf'
-    if 'output_file' not in scratchpad:
-        scratchpad['output_file'] = 'graph.png'
-    if 'logarithmic_scale' not in scratchpad:
-        scratchpad['logarithmic_scale'] = False
     if 'time_zone' not in scratchpad:
         scratchpad['time_zone'] = timezone_default()
-    for name in ('begin_date', 'end_date'):
-        if name in scratchpad['date']:
-            scratchpad['date'][name] = parse_datetime(scratchpad['date'][name], scratchpad['time_zone'])
-    while len(scratchpad['date']) < 2:
-        if not 'period' in scratchpad['date']:
-            scratchpad['date']['period'] = 'month'
-        elif not 'end_date' in scratchpad['date']:
-            scratchpad['date']['end_date'] = datetime.now(scratchpad['time_zone'])
     for name in ('begin_date', 'end_date', 'period'):
         if name not in scratchpad['date']:
             scratchpad['date'][name] = None
+    if 'log_scale' not in scratchpad:
+        scratchpad['log_scale'] = False
         
-    # Set graph parameters
-    graph_parameters.time_zone = scratchpad['time_zone']
-    graph_parameters.logarithmic_scale = scratchpad['logarithmic_scale']
-    graph_parameters.begin_date, graph_parameters.end_date = datetimes_from_datetime_and_period(
-        begin_date=scratchpad['date']['begin_date'],
-        end_date=scratchpad['date']['end_date'],
-        period=scratchpad['date']['period']
-    )
+    # Get data object
+    try:
+        data = Data(Config(scratchpad['config_file']))
+    except IOError, e:
+        raise ParameterError('Error reading config file: %s' % e)
+    
+    # Get period object (fills in default values if necessary: P=month, E=now)
+    try:
+        period = data.parse_period(
+            begin_date=scratchpad['date']['begin_date'], 
+            end_date=scratchpad['date']['end_date'], 
+            period=scratchpad['date']['period'], 
+            time_zone=scratchpad['time_zone']
+        )
+    except ValueError, e:
+        raise ParameterError('Error parsing time/period: %s' % e)
 
-    # Print validated values
-    graph_parameters.validate()
-    print 'Begin date:', graph_parameters.begin_date
-    print 'End date:', graph_parameters.end_date
-    print 'Period:', graph_parameters.date_diff
-    print 'Logarithmic scale:', graph_parameters.logarithmic_scale
 
-    # Write the graph to file
-    graph = StandardGraph(Data(Config(scratchpad['config_file'])), graph_parameters)
-    print ' ... writing', scratchpad['output_file']
-    graph.write(scratchpad['output_file'])
+    # XXX add select-packet-count instead of bytes option
+    # XXX fit modpython example to be in sync with current version
 
+    if True:
+        try:
+            result_list = data.parse_queries(period=period, queries=scratchpad['queries'])
+        except AssertionError, e:
+            raise ParameterError('Error parsing query: %s' % e)
+    else:
+        # XXX add checking for Top-N stuff..
+        pass
+
+    print 'Selected period (%s) between %s and %s:' % (period.period, period.begin_date, period.end_date)
+    bps_formatter = graphutil.BitsPerSecondFormatter()
+    for result in result_list:
+        print ' * %s:' % result.human_query
+        t, i, o = result.get_max_io_bps()
+        print '   max bps at %s: in %s (%s), out %s (%s)' % (t, bps_formatter(i), i, bps_formatter(o), o)
+        print '   max pps at %s: in %s, out %s' % result.get_max_io_pps()
+        if period.get_period() == 'month':
+            b = result.get_billing_value()
+            print '   billing value (95th percentile): %s (%s)' % (bps_formatter(b), b)
+    
+    if 'graph_file' in scratchpad:
+        print 'Writing %s graph to file %s ... ' % (('linear', 'logarithmic')[scratchpad['log_scale']], scratchpad['graph_file']),
+        graph = StandardGraph(result_list=result_list, log_scale=scratchpad['log_scale'], show_billing_line=True)
+        graph.write(scratchpad['graph_file'])
+        print 'done.'
+
+
+
+if __name__ == '__main__':
+    import sys
+    from getopt import GetoptError
+    try:
+        main(sys.argv[1:])
+    except (GetoptError, ParameterError), e:
+        print e 
