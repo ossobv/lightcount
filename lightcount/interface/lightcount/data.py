@@ -283,8 +283,8 @@ class Data(object):
             io_bps = max(self.get_io_bps())
             self.load_values()
             for t, _, _, i, o in self.values:
-                if 8 * (i + o) == io_bps:
-                    return datetime.fromtimestamp(t, self.period.get_tzinfo()), i, o
+                if (i + o) << 3 == io_bps:
+                    return datetime.fromtimestamp(t, self.period.get_tzinfo()), i << 3, o << 3
             assert False, 'Programming error'
         def get_max_io_pps(self):
             io_pps = max(self.get_io_pps())

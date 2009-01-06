@@ -155,13 +155,13 @@ specified as IP addresses with a trailing slash and a netmask number.
     if True:
         try:
             result_list = data.parse_queries(period=period, queries=scratchpad['queries'])
-        except AssertionError, e:
+        except (AssertionError, ValueError), e:
             raise ParameterError('Error parsing query: %s' % e)
     else:
         # XXX add checking for Top-N stuff..
         pass
 
-    print 'Selected period (%s) between %s and %s:' % (period.period, period.begin_date, period.end_date)
+    print 'Selected period (%s) between %s and %s:' % (period.get_period(), period.get_begin_date(), period.get_end_date())
     bps_formatter = graphutil.BitsPerSecondFormatter()
     for result in result_list:
         print ' * %s:' % result.human_query
