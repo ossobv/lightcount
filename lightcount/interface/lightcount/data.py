@@ -64,6 +64,16 @@ class Data(object):
             self.storage = storage
             self.cannodemap = {}
             self.humnodemap = {}
+        def canonicalize_host4(self, host):
+            from socket import getaddrinfo, gethostbyaddr, gaierror, herror, AF_INET, SOCK_RAW
+            try:
+                ips = getaddrinfo(host, None, AF_INET, 0) # AI_CANONNAME does not work :(
+                ip4 = ips[0][4][0]
+                try: rev = gethostbyaddr(ip4)[0]
+                except herror: rev = self.canonicalize_ip4(host4)[1]
+            except gaierror:
+                return self.canonicalize_ip4(host)
+            return bits.inet_atol(ip4), rev
         def canonicalize_ip4(self, ip):
             try: ip = long(ip)
             except (TypeError, ValueError): ip = bits.inet_atol(ip)
@@ -87,7 +97,7 @@ class Data(object):
                 self.humnodemap[node_id] = self.storage.fetch_atom('SELECT node_name FROM node_tbl WHERE node_id = %s', (node_id,))
             return node_id, self.humnodemap[node_id]
         def canonicalize_vlan(self, vlan):
-            return int(node), int(node)
+            return int(vlan), int(vlan)
 
 
     class ExpressionParser(object):
@@ -107,12 +117,16 @@ class Data(object):
                 lowarg = arg.lower()
                 if state == None:
                     if lowarg == 'not': is_not = not is_not
-                    elif lowarg in ('ip', 'net', 'node', 'vlan'): state = lowarg
+                    elif lowarg in ('host', 'ip', 'net', 'node', 'vlan'): state = lowarg
                     elif lowarg == '(': query.append('(') ; human.append('(') ; parens += 1
                     else: assert False, 'Unexpected keyword %s' % arg
-                elif state in ('ip', 'net', 'node', 'vlan'):
+                elif state in ('host', 'ip', 'net', 'node', 'vlan'):
                     cmp_oper, cmp_name = (('=', ''), ('<>', 'not '))[bool(is_not)]
-                    if state == 'ip':
+                    if state == 'host':
+                        ip, humhost = self.units.canonicalize_host4(arg)
+                        query.append('ip %s %s' % (cmp_oper, ip))
+                        human.append('%shost %s' % (cmp_name, humhost))
+                    elif state == 'ip':
                         ip, humip = self.units.canonicalize_ip4(arg)
                         query.append('ip %s %s' % (cmp_oper, ip))
                         human.append('%sip %s' % (cmp_name, humip))
@@ -126,7 +140,7 @@ class Data(object):
                         human.append('%snode %s' % (cmp_name, humnode))
                     elif state == 'vlan':
                         vlan, humvlan = self.units.canonicalize_vlan(arg)
-                        query.append('vlan_id %s %s', (cmp_oper, vlan))
+                        query.append('vlan_id %s %s' % (cmp_oper, vlan))
                         human.append('%svlan %s' % (cmp_name, humvlan))
                     state, is_not = 'oper', None
                 elif state == 'oper':

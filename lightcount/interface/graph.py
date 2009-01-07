@@ -90,10 +90,9 @@ Period selection:
   -z, --time-zone=Z     use time zone name Z (dfl: %(Z)s)
 
 Value selection:
-  -q, --query=Q         specify an expression Q using (ip, net, node,
-                        vlan) and the operators (and, or, not and
-                        the parentheses) (may be specified multiple
-                        times)
+  -q, --query=Q         specify an expression Q using (host, ip, net, node,
+                        vlan) and the operators (and, or, not and the
+                        parentheses) (may be specified multiple times)
 
 Automatic selection (you may specify at most one query):
   -I, --top-ips=N       show the top N byte users by IP address
