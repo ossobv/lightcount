@@ -66,12 +66,12 @@ class StandardGraph:
                     trafficlines.append({'name': 'output FIXME', 'color': colors[len(trafficlines)], 'data': fixup_values(ax, result.get_out_bps())})
                     if self.period.get_period() == 'month' and self.show_billing_line:
                         billingpoints.append({'name': '95p FIXME', 'color': colors[len(trafficlines)],
-                                              'data': fixup_values(ax, (result.get_billing_value(),))[0]})
+                                              'data': fixup_values(ax, (max(*result.get_billing_values()),))[0]})
                 else:
                     trafficlines.append({'name': 'in/out FIXME', 'color': colors[len(trafficlines)], 'data': fixup_values(ax, result.get_io_bps())})
                     if self.period.get_period() == 'month' and self.show_billing_line:
                         billingpoints.append({'name': '95p FIXME', 'color': colors[len(trafficlines)-1],
-                                              'data': fixup_values(ax, (result.get_billing_value(),))[0]})
+                                              'data': fixup_values(ax, (max(*result.get_billing_values()),))[0]})
 
             # Draw the traffic lines
             for line in trafficlines:
@@ -172,9 +172,9 @@ class StandardGraph:
         tmpfile = os.tmpfile()
         self.write(tmpfile)
         tmpfile.seek(0)
-        return tmpfile.read() # destructor should clean up any would-be temporary files
+        return tmpfile.read() # destructor will clean up any would-be temporary files
 
-    def write(self, filename):
-        ''' Write the image to filename on the local file system. '''
+    def write(self, filename_or_fileobj):
+        ''' Write the image to filename on the local file system or to a file object. '''
         f = self.create_figure()
-        f.savefig(filename, dpi=self.dpi)
+        f.savefig(filename_or_fileobj, dpi=self.dpi)

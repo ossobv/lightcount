@@ -308,7 +308,7 @@ class Data(object):
                     return datetime.fromtimestamp(t, self.period.get_tzinfo()), i, o
             assert False, 'Programming error'
             
-        def get_billing_value(self):
+        def get_billing_values(self):
             if self.period.get_period() != 'month': return None
             if 'billing_value' not in self.cache:
                 self.load_values()
@@ -322,7 +322,7 @@ class Data(object):
                 yin95, yout95 = yin[sample95], yout[sample95]
                 if yin95 is None: yin95 = 0L
                 if yout95 is None: yout95 = 0L
-                self.cache['billing_value'] = max(yin95, yout95)
+                self.cache['billing_value'] = (yin95, yout95)
             return self.cache['billing_value']
 
         def __str__(self):

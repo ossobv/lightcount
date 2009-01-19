@@ -168,8 +168,9 @@ specified as IP addresses with a trailing slash and a netmask number.
         print '   max bps at %s: in %s (%s), out %s (%s)' % (t, bps_formatter(i), i, bps_formatter(o), o)
         print '   max pps at %s: in %s, out %s' % result.get_max_io_pps()
         if period.get_period() == 'month':
-            b = result.get_billing_value()
-            print '   billing value (95th percentile): %s (%s)' % (bps_formatter(b), b)
+            b = result.get_billing_values()
+            bmax = max(b[0], b[1])
+            print '   billing value (95th percentile): %s (%s) [based on %sput]' % (bps_formatter(bmax), bmax, ('out', 'in')[b[0]==bmax])
     
     if 'graph_file' in scratchpad:
         print 'Writing %s graph to file %s ... ' % (('linear', 'logarithmic')[scratchpad['log_scale']], scratchpad['graph_file']),
