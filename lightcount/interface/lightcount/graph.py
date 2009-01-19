@@ -22,6 +22,7 @@ from lightcount.timeutil import *
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.dates import date2num
+from numpy import ndarray
 
 
 class StandardGraph:
@@ -48,6 +49,14 @@ class StandardGraph:
                     for i, y in enumerate(data):
                         if y == 0:
                             data[i] = 1
+                # If we're in future numpy-mode, remove None's
+                # XXX FIXME: why can't I use None's?
+                if type(ax.dataLim.intervaly) == ndarray:
+                    replace_none = (0, 1)[ax.get_yscale() == 'log']
+                    data = list(data)
+                    for i, y in enumerate(data):
+                        if y is None:
+                            data[i] = replace_none
                 return data
                 
             # If only one query is specified, we can show both input and output in the same graph.
@@ -117,8 +126,11 @@ class StandardGraph:
         def format_y_axis(ax):
             ''' Draw horizontal lines and line identifiers. '''
             # Set limits to be at least a range (else the line would be centered)
-            # Note! In the future intervaly might become a 2tuple-property.
-            ymin, ymax = ax.dataLim.intervaly().get_bounds()
+            try:
+                ymin, ymax = ax.dataLim.intervaly().get_bounds() # old matplotlib
+            except TypeError:
+                ymin, ymax = ax.get_ybound() # new matplotlib
+
             # Use base2 loglocator on logarithmic output
             if ax.get_yscale() == 'log':
                 if ymax == 1:

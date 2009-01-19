@@ -23,7 +23,7 @@ if __name__ != '__main__':
 from lightcount import Config
 from lightcount.timeutil import *
 from lightcount.data import Data
-from lightcount.graph import StandardGraph, GraphParameters
+from lightcount.graph import StandardGraph
 
 # The root of the handler in the request uri. (E.g. if you've defined
 # <Location /traffic/> in your apache configuration, you want to set
@@ -32,7 +32,11 @@ WEB_ROOT = '/'
 
 
 def handler(req):
-    is_debug = bool(req.server.get_config()['PythonDebug'])
+    try:
+        is_debug = bool(req.server.get_config()['PythonDebug'])
+    except KeyError:
+        is_debug = False
+
     uri = req.uri[len(WEB_ROOT):]
 
     # This is an example obviously. I could write "example.com" here,
@@ -44,6 +48,10 @@ def handler(req):
         return current_day(req, ip='91.194.225.81', log=False)
     elif uri == 'code.osso.nl-current-day-log.png':
         return current_day(req, ip='91.194.225.81', log=True)
+    elif uri == 'wjd.osso.nl-current-day-linear.png':
+        return current_day(req, ip='91.194.225.75', log=False)
+    elif uri == 'wjd.osso.nl-current-day-log.png':
+        return current_day(req, ip='91.194.225.75', log=True)
 
     req.content_type = 'text/plain'
     req.write('Try:\n%scode.osso.nl-current-day-linear.png' % (WEB_ROOT,))
@@ -51,16 +59,11 @@ def handler(req):
 
 
 def current_day(req, ip, log=False):
-    graph_parameters = GraphParameters()
-    graph_parameters.logarithmic_scale = log
-    graph_parameters.time_zone = timezone('UTC') #timezone_default() # does not work properly with python2.4
-    graph_parameters.begin_date, graph_parameters.end_date = datetimes_from_datetime_and_period(
-        begin_date=None,
-	end_date=datetime.now(graph_parameters.time_zone),
-	period='day'
-    )
-    graph_parameters.ips.append(ip)
+    tz = timezone_default() # timezone('UTC') for python2.4
+    data = Data(Config(os.path.dirname(__file__) + '/lightcount.conf'))
+    period = data.parse_period(begin_date=None, end_date=datetime.now(tz), period='day', time_zone=tz)
+    result_list = data.parse_queries(period=period, queries=['ip %s' % ip])
 
     req.content_type = 'image/png'
-    req.write(StandardGraph(Data(Config(os.path.dirname(__file__) + '/lightcount.conf')), graph_parameters).output())
+    req.write(StandardGraph(result_list=result_list, log_scale=log).output())
     return 0
