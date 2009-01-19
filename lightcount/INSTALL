@@ -74,12 +74,13 @@ you're done testing.)
   In the interface directory you will find graph.py. Use it to generate
 a pretty graph of your data. Run it with -h to see all available
 options. It reads the same configuration file as the daemon (see the -c
-option). graph.py was tested with python2.5, python-tz and
-python-matplotlib.
+option). graph.py was tested with python (2.4/2.5), pytz (python-tz),
+matplotlib (python-matplotlib) and MySQLdb (python-mysqldb).
 
   The directory also contains modpython.py, an example script for
-(apache2) mod_python. This one is tested with python2.4, python-tz and
-python-matplotlib. Time zone support seems broken with python2.4.
+(apache2) mod_python.
+
+  Time zone support seems broken with python2.4.
 
 ------------------------------------------------------------------------
   Reading the data by hand
