@@ -144,7 +144,7 @@ class Data(object):
                         human.append('%svlan %s' % (cmp_name, humvlan))
                     state, is_not = 'oper', None
                 elif state == 'oper':
-                    if lowarg == ')': assert parens > 0, 'Uneven parentheses' ; query.append(')') ; human.append('(') ; parens -= 1
+                    if lowarg == ')': assert parens > 0, 'Uneven parentheses' ; query.append(')') ; human.append(')') ; parens -= 1
                     elif lowarg in ('and', 'or'): query.append(lowarg.upper()) ; human.append(lowarg) ; state = None
                     else: assert False, 'Unexpected keyword %s' % arg
                 else:
