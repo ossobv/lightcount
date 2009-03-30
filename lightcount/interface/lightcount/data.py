@@ -345,23 +345,29 @@ class Data(object):
             result_list.append(Data.Result(self.storage, self.expparser, query, period))
         return result_list
 
-    def serialize(self, period, dest_file):
+    def serialize(self, result, dest_file, progress_callback=None):
+        where = ''
+        if result.query: where = 'AND (%s)' % result.query
+
         # We do node_id => node_name and ip => dotted-ip conversion in python
         # to save bandwidth and sql resources
         query = '''
             SELECT unixtime, node_id, vlan_id, ip, in_pps, in_bps, out_pps, out_bps
             FROM sample_tbl
-            WHERE (%(begin_date)s <= unixtime AND unixtime < %(end_date)s)
+            WHERE (%%(begin_date)s <= unixtime AND unixtime < %%(end_date)s) %s
             ORDER BY unixtime, ip, vlan_id, node_id
-        '''
-        begin_date = period.canonical_begin_date()
-        end_date = period.canonical_end_date()
+        ''' % where
+
+        begin_date = result.get_period().canonical_begin_date()
+        end_date = result.get_period().canonical_end_date()
         seconds_at_a_time = 3 * 3600
 
         # Use a smaller period and several queries to get our results
         dest_file.write('unixtime,node,vlan,ip,in_pps,in_bps,out_pps,out_bps\n')
         for date in range(begin_date, end_date, seconds_at_a_time): # [begin_date, end_date)
-            for row in self.storage.fetch_all(query, {'begin_date': date, 'end_date': date + seconds_at_a_time}):
+            if progress_callback:
+                progress_callback(date - begin_date, end_date - begin_date)
+            for row in self.storage.fetch_all(query, {'begin_date': date, 'end_date': min(end_date, date + seconds_at_a_time)}):
                 dest_file.write('%d,"%s",%d,"%s",%d,%d,%d,%d\n' % (
                     row[0],
                     self.units.canonicalize_node(row[1])[1].replace('"', '""'),
@@ -369,3 +375,5 @@ class Data(object):
                     self.units.canonicalize_ip4(row[3])[1].replace('"', '""'),
                     row[4], row[5], row[6], row[7]
                 ))
+        if progress_callback:
+            progress_callback(end_date - begin_date, end_date - begin_date)

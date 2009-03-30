@@ -9,6 +9,9 @@
   Changelog
 ------------------------------------------------------------------------
 + 090330: Added serialize-to-csv support in lightcount.data.
++ 090330: Changed the graph.py interface to lightcount.py and changed
+          the interface a bit. It now allows for csv-serialization
+          through the 'dump' command.
 
 
 ========================================================================
