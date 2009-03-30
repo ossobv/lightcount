@@ -60,7 +60,7 @@ def main(cli_arguments):
             if 'period' in scratchpad['date']:
                 raise GetoptError('Period already specified!')
             if val not in known_periods():
-                raise GetoptError('Specify one of %s as period.' % (', '.join(known_periods())))
+                raise GetoptError('Specify one of %s as period' % (', '.join(known_periods())))
             scratchpad['date']['period'] = val
         elif key == '--begin-date':
             if 'begin_date' in scratchpad['date']:
@@ -72,7 +72,7 @@ def main(cli_arguments):
             scratchpad['date']['end_date'] = val
         elif key in ('--linear', '--log'):
             if 'log_scale' in scratchpad:
-                raise GetoptError('Specify either --linear or --log and do it once.')
+                raise GetoptError('Specify either --linear or --log and do it once')
             scratchpad['log_scale'] = key == '--log'
         elif key in ('-h', '--help'):
             print '''Usage: FIXME.py OPTIONS
@@ -115,9 +115,9 @@ specified as IP addresses with a trailing slash and a netmask number.
 
     # Check invalid options
     if len(args) != 0:
-        raise GetoptError('This program does not take non-option arguments.')
+        raise GetoptError('This program does not take non-option arguments')
     if len(scratchpad['date']) == 3:
-        raise GetoptError('Specify at most one date and a period or two dates.')
+        raise GetoptError('Specify at most one date and a period or two dates')
         
     # Set defaults
     if 'config_file' not in scratchpad:

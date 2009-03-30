@@ -36,6 +36,11 @@ def timezone_default():
 def parse_datetime(date_str, tz=None):
     ''' Converts a date/time string to a datetime object. '''
     try:
+        if tz is not None and type(tz) == str:
+            tz = timezone(tz)
+    except Exception, e:
+        raise ValueError('Invalid time zone: %s' % e)
+    try:
         try:
             date_str, time_str = date_str.split(' ', 1)
             hour, min = time_str.split(':', 1)
@@ -46,10 +51,10 @@ def parse_datetime(date_str, tz=None):
         elif '-' in date_str:
             year, month, day = date_str.split('-', 2)
         else:
-            raise ValueError('Can\'t parse date.')
+            raise ValueError('Date parse error')
         datetime_obj = datetime(year=int(year), month=int(month), day=int(day), hour=int(hour), minute=int(min), second=0, tzinfo=tz)
     except Exception, e:
-        raise ValueError('Dates should be in this format: mm/dd/yyyy OR YYYY-mm-dd [HH:MM].')
+        raise ValueError('Dates should be in this format: mm/dd/yyyy OR YYYY-mm-dd [HH:MM]')
     return datetime_obj
 
 def known_periods():
@@ -99,7 +104,7 @@ def datetimes_from_datetime_and_period(begin_date=None, end_date=None, period=No
             or (begin_date == end_date == None) \
             or (begin_date == period == None) \
             or (end_date == period == None):
-        raise Exception('I need exactly two of begin_date, end_date and period.')
+        raise Exception('Exactly two of begin_date, end_date and period are required')
 
     if begin_date == None:
         end_date = datetime_round(end_date, period, round_up=True)
