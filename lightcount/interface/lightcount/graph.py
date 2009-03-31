@@ -99,9 +99,12 @@ class StandardGraph:
             date_diff = period.get_interval()
             tzinfo = period.get_tzinfo()
 
-            if date_diff <= 43200:
+            if date_diff <= 14400:
                 loc = graphutil.MinuteLocator(byminute=(0, 30), tz=tzinfo)
                 fmt = graphutil.DateFormatter('%H:%M %z', tz=tzinfo)
+            elif date_diff <= 43200:
+                loc = graphutil.HourLocator(interval=1, tz=tzinfo)
+                fmt = graphutil.DateFormatter('%H:%M', tz=tzinfo)
             elif date_diff <= 90000:
                 loc = graphutil.HourLocator(interval=2, tz=tzinfo)
                 fmt = graphutil.DateFormatter('%Hh', tz=tzinfo)

@@ -41,8 +41,8 @@ def handler(req):
 
     # This is an example obviously. I could write "example.com" here,
     # but having a working example in SVN makes my life easy.
-    # You will want to read graph.py and lightcount/graph.py to see
-    # exactly which GraphParameters you can define.
+    # You will want to read lightcount.py and lightcount/graph.py to see
+    # exactly which parameters you can define.
 
     if uri == 'code.osso.nl-current-day-linear.png':
         return current_day(req, ip='91.194.225.81', log=False)
