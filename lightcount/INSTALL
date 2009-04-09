@@ -71,11 +71,13 @@ you're done testing.)
 ------------------------------------------------------------------------
   Reading the data
 ------------------------------------------------------------------------
-  In the interface directory you will find graph.py. Use it to generate
-a pretty graph of your data. Run it with -h to see all available
-options. It reads the same configuration file as the daemon (see the -c
-option). graph.py was tested with python (2.4/2.5), pytz (python-tz),
-matplotlib (python-matplotlib) and MySQLdb (python-mysqldb).
+  In the interface directory you will find lightcount.py. It can
+generate pretty graphs of your data, calculate 95th percentile values
+and dump (backup) the database to CSV. Run it with -h to see all
+available options. It reads the same configuration file as the daemon
+(see the -c option). lightcount.py was tested with python (2.4/2.5),
+pytz (python-tz), matplotlib (python-matplotlib) and MySQLdb
+(python-mysqldb).
 
   The directory also contains modpython.py, an example script for
 (apache2) mod_python.
