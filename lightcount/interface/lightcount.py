@@ -177,10 +177,10 @@ def do_statgraph(data, period, options, stat=None, graph=None):
                 print '   billing value (95th percentile): %s (%s) [based on %sput]' % (bps_formatter(bmax), bmax, ('out', 'in')[b[0]==bmax])
     
     if graph is not None:
-        print 'Writing %s graph to file %s ... ' % (('linear', 'logarithmic')[options['log_scale']], graph),
+        print 'Writing %s graph to file %s ...' % (('linear', 'logarithmic')[options['log_scale']], graph),
         image = StandardGraph(result_list=result_list, log_scale=options['log_scale'], show_billing_line=True)
         image.write(graph)
-        print 'done.'
+        print 'done'
 
 def do_version():
     print 'lightcount.py (svn-version)'

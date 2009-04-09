@@ -42,22 +42,17 @@ class StandardGraph:
 
     def create_figure(self):
         def plot_lines(ax, xvalues, result_list):
-            def fixup_values(ax, data):
+            def fix_data(x, y, is_log=False):
+                # Drop trailing None's (happens when querying "current graphs because we align on sensible periods)
+                x, y = list(x), list(y)
+                while len(y) and y[-1] is None:
+                    x.pop()
+                    y.pop()
                 # If we're in log-mode, we can't draw on 0, so we change that to 1.
-                if ax.get_yscale() == 'log':
-                    data = list(data)
-                    for i, y in enumerate(data):
-                        if y == 0:
-                            data[i] = 1
-                # If we're in future numpy-mode, remove None's
-                # XXX FIXME: why can't I use None's?
-                if type(ax.dataLim.intervaly) == ndarray:
-                    replace_none = (0, 1)[ax.get_yscale() == 'log']
-                    data = list(data)
-                    for i, y in enumerate(data):
-                        if y is None:
-                            data[i] = replace_none
-                return data
+                if is_log:
+                    y = map(lambda y: (y, 1)[y==0], y)
+                
+                return x, y
                 
             # If only one query is specified, we can show both input and output in the same graph.
             show_input_output_separately = len(result_list) == 1
@@ -67,31 +62,41 @@ class StandardGraph:
             else:
                 colors = ['#383838','#90ae61','#ffb400','#e70a8c','#00a2d0']
 
-            trafficlines = []
-            billingpoints = []
-            for result in result_list:
+            color_n = 0
+            lines = []
+            for result_n, result in enumerate(result_list):
+                label_append = (' (%i)' % (result_n + 1), '')[len(result_list)==1]
                 if show_input_output_separately:
-                    trafficlines.append({'name': 'input FIXME', 'color': colors[len(trafficlines)], 'data': fixup_values(ax, result.get_in_bps())})
-                    trafficlines.append({'name': 'output FIXME', 'color': colors[len(trafficlines)], 'data': fixup_values(ax, result.get_out_bps())})
-                    if self.period.get_period() == 'month' and self.show_billing_line:
-                        billingpoints.append({'name': '95p FIXME', 'color': colors[len(trafficlines)],
-                                              'data': fixup_values(ax, (max(*result.get_billing_values()),))[0]})
+                    lines.append({'x': xvalues, 'y': result.get_in_bps(), 'label': 'input%s' % label_append, \
+                                  'color': colors[color_n % len(colors)], 'linewidth': 2.0, 'alpha': 0.5})
+                    color_n += 1
+                    lines.append({'x': xvalues, 'y': result.get_out_bps(), 'label': 'output%s' % label_append, \
+                                  'color': colors[color_n % len(colors)], 'linewidth': 2.0, 'alpha': 0.5})
+                    color_n += 1
                 else:
-                    trafficlines.append({'name': 'in/out FIXME', 'color': colors[len(trafficlines)], 'data': fixup_values(ax, result.get_io_bps())})
-                    if self.period.get_period() == 'month' and self.show_billing_line:
-                        billingpoints.append({'name': '95p FIXME', 'color': colors[len(trafficlines)-1],
-                                              'data': fixup_values(ax, (max(*result.get_billing_values()),))[0]})
+                    lines.append({'x': xvalues, 'y': result.get_io_bps(), 'label': 'in/out%s' % label_append, \
+                                  'color': colors[color_n % len(colors)], 'linewidth': 2.0, 'alpha': 0.5})
+                    color_n += 1
+                if self.period.get_period() == 'month' and self.show_billing_line:
+                    x = (
+                        max(xvalues[0], date2num(self.period.get_begin_date())),
+                        min(xvalues[-1], date2num(self.period.get_end_date()))
+                    )
+                    y_point = max(*result.get_billing_values())
+                    if show_input_output_separately:
+                        color = colors[color_n % len(colors)]
+                        color_n += 1
+                    else:
+                        color = colors[(color_n - 1) % len(colors)]
+                    lines.append({'x': x, 'y': (y_point, y_point), 'label': '95p%s' % label_append, \
+                                  'color': color, 'linewidth': 1.0})
 
             # Draw the traffic lines
-            for line in trafficlines:
-                # Draw the line, unless there are only None-valus
-                if len(set(line['data']) - set((None,))) != 0:
-                    ax.plot(xvalues, line['data'], color=line['color'], linewidth=2.00, alpha=0.5, label=line['name'])
-
-            # Draw the percentile lines
-            billing_xvalues = (max(xvalues[0], date2num(self.period.get_begin_date())), min(xvalues[-1], date2num(self.period.get_end_date())))
-            for point in billingpoints:
-                ax.plot(billing_xvalues, (point['data'], point['data']), color=point['color'], linewidth='1.00', label=point['name'])
+            for line in lines:
+                # Draw the line, unless there are only None-values
+                if len(set(line['y']) - set((None,))) != 0:
+                    x, y = fix_data(line.pop('x'), line.pop('y'), is_log=(ax.get_yscale()=='log'))
+                    ax.plot(x, y, **line)
 
         def format_x_axis(ax):
             ''' Draw vertical lines and line identifiers. '''
@@ -156,7 +161,7 @@ class StandardGraph:
 
         def format_legend(ax):
             ''' Create a legend from the labeled lines. '''
-            legend = ax.legend(loc='upper left')
+            legend = ax.legend(loc='best')
             legend.draw_frame(True)
             for text in legend.get_texts():
                 text.set_fontsize(10)

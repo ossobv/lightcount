@@ -8,6 +8,11 @@
 ------------------------------------------------------------------------
   Changelog
 ------------------------------------------------------------------------
++ 090409: Replaced the "FIXME" in the graph legend with numbers. You're
+          free to print the query out-of-band, using numbers starting at
+          one.
++ 090409: Fixed issue with drawing of zero-values where no values should
+          be drawn (in newer numpy versions).
 + 090330: Added serialize-to-csv support in lightcount.data.
 + 090330: Changed the graph.py interface to lightcount.py and changed
           the interface a bit. It now allows for csv-serialization
