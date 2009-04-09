@@ -8,6 +8,8 @@
 ------------------------------------------------------------------------
   Changelog
 ------------------------------------------------------------------------
++ 090409: Proper handling of the keyboard interrupt (SIGINT) in the
+          lightcount.py interface.
 + 090409: Replaced the "FIXME" in the graph legend with numbers. You're
           free to print the query out-of-band, using numbers starting at
           one.

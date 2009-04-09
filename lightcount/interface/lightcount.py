@@ -197,3 +197,5 @@ if __name__ == '__main__':
     except GetoptError, e:
         print >> sys.stderr, e 
         sys.exit(1)
+    except KeyboardInterrupt:
+        print >> sys.stderr, '\nInterrupted by user'

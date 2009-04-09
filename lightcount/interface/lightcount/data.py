@@ -17,6 +17,7 @@
 # along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 #=======================================================================
 import MySQLdb as db, lightcount, math, re
+from _mysql_exceptions import ProgrammingError
 from lightcount import bits
 from lightcount.timeutil import *
 
@@ -43,7 +44,13 @@ class Data(object):
             self.conn = db.connect(host=host, port=int(port), user=user, passwd=passwd, db=dbase, connect_timeout=30)
         def execute(self, *args, **kwargs):
             cursor = self.conn.cursor()
-            cursor.execute(*args, **kwargs)
+            try:
+                cursor.execute(*args, **kwargs)
+            except (KeyboardInterrupt, SystemExit):
+                # Catch a programming error ;)
+                try: cursor.close()
+                except ProgrammingError: cursor.connection = None
+                raise
             return cursor
         def fetch_all(self, *args, **kwargs):
             cursor = self.execute(*args, **kwargs)
