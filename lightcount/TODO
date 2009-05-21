@@ -55,6 +55,9 @@
 ------------------------------------------------------------------------
 + Heavy load tests to run (feedback from users would be appreciated)
 + Optimizing default #define's through interpretation of live data
++ Add a check somewhere that checks whether byte or packet counts are
+  (possibly) truncated. This can happen on heavily used lines when the
+  bytes per second do not fit into 32 bits and packets per second in 16.
 
 
 ========================================================================
