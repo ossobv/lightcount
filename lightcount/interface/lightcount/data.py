@@ -181,14 +181,19 @@ class Data(object):
             self.time_zone = time_zone
             self.period = period
             self.begin_date, self.end_date = datetimes_from_datetime_and_period(begin_date, end_date, period)
+            self.now = datetime.now(time_zone)
         def canonical_begin_date(self):
             return long(mktime(self.begin_date.timetuple()))
         def canonical_end_date(self):
             return long(mktime(self.end_date.timetuple()))
+        def canonical_now(self):
+            return long(mktime(self.now.timetuple()))
         def get_begin_date(self):
             return self.begin_date
         def get_end_date(self):
             return self.end_date
+        def get_now(self):
+            return self.now
         def get_period(self):
             return self.period
         def get_interval(self):
@@ -319,17 +324,27 @@ class Data(object):
             if self.period.get_period() != 'month': return None
             if 'billing_value' not in self.cache:
                 self.load_values()
-                yin = list(self.get_in_bps())
-                yin.pop() # drop fencepost for next month
-                yin.sort()
-                yout = list(self.get_out_bps())
-                yout.pop() # drop fencepost for next month
-                yout.sort()
-                sample95 = int(math.ceil(len(yin) * float(self.billing_percentile) / 100.0) - 1)
-                yin95, yout95 = yin[sample95], yout[sample95]
+
+                print self.period.get_end_date(), '>', self.period.get_now()
+                estimate = self.period.get_end_date() > self.period.get_now()
+
+                results = [] # holds in/out
+                for y in (list(self.get_in_bps()), list(self.get_out_bps())):
+                    if not estimate:
+                        # drop fencepost for next month
+                        y.pop()
+                    else:
+                        # drop all future values
+                        for i in range(self.period.canonical_now(), self.period.canonical_end_date(), lightcount.INTERVAL_SECONDS):
+                            y.pop()
+                    y.sort()
+                    results.append(y)
+
+                sample95 = int(math.ceil(len(results[0]) * float(self.billing_percentile) / 100.0) - 1)
+                yin95, yout95 = results[0][sample95], results[1][sample95]
                 if yin95 is None: yin95 = 0L
                 if yout95 is None: yout95 = 0L
-                self.cache['billing_value'] = (yin95, yout95)
+                self.cache['billing_value'] = (yin95, yout95, estimate)
             return self.cache['billing_value']
 
         def __str__(self):

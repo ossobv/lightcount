@@ -82,14 +82,15 @@ class StandardGraph:
                         max(xvalues[0], date2num(self.period.get_begin_date())),
                         min(xvalues[-1], date2num(self.period.get_end_date()))
                     )
-                    y_point = max(*result.get_billing_values())
+                    billing_in, billing_out, billing_estimate = result.get_billing_values()
+                    y_point = max(billing_in, billing_out)
                     if show_input_output_separately:
                         color = colors[color_n % len(colors)]
                         color_n += 1
                     else:
                         color = colors[(color_n - 1) % len(colors)]
                     lines.append({'x': x, 'y': (y_point, y_point), 'label': '95p%s' % label_append, \
-                                  'color': color, 'linewidth': 1.0})
+                                  'color': color, 'linewidth': 1.0, 'linestyle': ('-', '--')[billing_estimate]})
 
             # Draw the traffic lines
             for line in lines:

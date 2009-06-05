@@ -174,7 +174,9 @@ def do_statgraph(data, period, options, stat=None, graph=None):
             if period.get_period() == 'month':
                 b = result.get_billing_values()
                 bmax = max(b[0], b[1])
-                print '   billing value (95th percentile): %s (%s) [based on %sput]' % (bps_formatter(bmax), bmax, ('out', 'in')[b[0]==bmax])
+                print '   billing value (95th percentile): %s (%s) [based on %sput%s]' % (
+                    bps_formatter(bmax), bmax, ('out', 'in')[b[0]==bmax], ('', ', ESTIMATE!')[b[2]]
+                )
     
     if graph is not None:
         print 'Writing %s graph to file %s ...' % (('linear', 'logarithmic')[options['log_scale']], graph),
