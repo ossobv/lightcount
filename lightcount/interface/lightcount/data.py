@@ -325,7 +325,6 @@ class Data(object):
             if 'billing_value' not in self.cache:
                 self.load_values()
 
-                print self.period.get_end_date(), '>', self.period.get_now()
                 estimate = self.period.get_end_date() > self.period.get_now()
 
                 results = [] # holds in/out
