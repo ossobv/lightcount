@@ -114,7 +114,7 @@ def do_dump(data, period, options, file):
     print 'done'
 
 def do_help(): 
-    print '''Usage: lightcount.py COMMAND PARAMETERS OPTIONS
+    print '''Usage: trafutil.py COMMAND PARAMETERS OPTIONS
 Perform analysis, backups or drawing of lightcount data.
 Commands available are:
   dump          Dumps all data or only that supplied by a single query (-q) to
@@ -185,7 +185,7 @@ def do_statgraph(data, period, options, stat=None, graph=None):
         print 'done'
 
 def do_version():
-    print 'lightcount.py (svn-version)'
+    print 'trafutil.py (svn-version)'
 
 
 if __name__ == '__main__':
