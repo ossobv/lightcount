@@ -34,6 +34,10 @@ def mpl_range(begin_date, end_date, interval):
     return ret
 
 
+class DataException(Exception):
+    pass
+
+
 class Data(object):
     ''' LightCount data reader. Reads data from the SQL database found in the supplied Config object. '''
 
@@ -41,7 +45,9 @@ class Data(object):
         ''' Minor database abstraction. '''
         def __init__(self, type, host, port, user, passwd, dbase):
             assert type == 'my', 'Only MySQL storage support is implemented'
-            self.conn = db.connect(host=host, port=int(port), user=user, passwd=passwd, db=dbase, connect_timeout=30)
+            try: self.conn = db.connect(host=host, port=int(port), user=user, passwd=passwd, db=dbase, connect_timeout=30)
+            except db.OperationalError, e: raise DataException(e)
+
         def execute(self, *args, **kwargs):
             cursor = self.conn.cursor()
             try:
