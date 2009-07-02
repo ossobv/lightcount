@@ -68,7 +68,7 @@ def main(cli_arguments):
     # Check parameters
     if len(args) == 0: raise ParameterError('Please supply a command or -h for help')
     elif len(args) == 1 and args[0] == 'stat': command = args[0]
-    elif len(args) == 2 and args[0] in ('dump', 'graph', 'statgraph'): command = args[0]
+    elif len(args) == 2 and args[0] in ('dump', 'graph', 'graphstat', 'statgraph'): command = args[0]
     else: raise ParameterError('Invalid command or too many/few parameters')
 
     # Check invalid option combinations
@@ -95,7 +95,7 @@ def main(cli_arguments):
     if command == 'dump': do_dump(data=data, period=period, options=scratchpad, file=args[1])
     elif command == 'graph': do_statgraph(data=data, period=period, options=scratchpad, graph=args[1])
     elif command == 'stat': do_statgraph(data=data, period=period, options=scratchpad, stat='-')
-    elif command == 'statgraph': do_statgraph(data=data, period=period, options=scratchpad, stat='-', graph=args[1])
+    elif command in ('graphstat', 'statgraph'): do_statgraph(data=data, period=period, options=scratchpad, stat='-', graph=args[1])
 
 
 def do_dump(data, period, options, file):
