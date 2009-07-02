@@ -23,4 +23,22 @@
                  "Module %s was already imported from %s, but %s is being added"
 
 
+------------------------------------------------------------------------
+  DeprecationWarning: the sets module is deprecated
+  https://bugs.launchpad.net/python-mysqldb/+bug/338387
+------------------------------------------------------------------------
+
+--- /var/lib/python-support/python2.6/MySQLdb/__init__.py.orig	2009-07-02 10:07:18.142727402 +0200
++++ /var/lib/python-support/python2.6/MySQLdb/__init__.py	2009-07-02 08:45:15.297723946 +0200
+@@ -16,6 +16,9 @@
+ __revision__ = """$Revision: 491 $"""[11:-2]
+ from release import __version__, version_info, __author__
+ 
++import warnings
++warnings.filterwarnings("ignore", message="the sets module is deprecated")
++
+ import _mysql
+ 
+ if version_info != _mysql.version_info:
+
 ========================================================================

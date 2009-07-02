@@ -1,13 +1,23 @@
 ========================================================================
-  CHANGES (LightCount IP traffic counter)                wjd, mar 2009
+  CHANGES (LightCount IP traffic counter)                wjd, jul 2009
 ========================================================================
 
-  This document lists the changes of lightcount since SVN revision 33.
+  This document lists the changes of lightcount since SVN revision 49.
 
 
 ------------------------------------------------------------------------
   Changelog
 ------------------------------------------------------------------------
++ 090702: Added a 3 hour period (the one hour graph has only 12 data
+          points).
++ 090702: Added 'graphstat' as alias for 'statgraph' in trafutil.
++ 090609: Renamed lightcount.py to trafutil.py to not conflict with the
+          lightcount interface library directory.
++ 090605: Added dashed 95 percentile line for the estimate of the
+          current month.
++ 090521: Reduce database size by using smaller integers. Revert r42 if
+          you have that much traffic that your values overflow. (MySQL
+          sets them to INT_MAX on overflow, so it's easy to see.)
 + 090409: Proper handling of the keyboard interrupt (SIGINT) in the
           lightcount.py interface.
 + 090409: Replaced the "FIXME" in the graph legend with numbers. You're
