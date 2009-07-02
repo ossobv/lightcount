@@ -59,7 +59,7 @@ def parse_datetime(date_str, tz=None):
 
 def known_periods():
     ''' Return all known 'period-of-time' types. '''
-    return ('hour', '12h', 'day', 'week', 'month', 'year')
+    return ('hour', '3h', '12h', 'day', 'week', 'month', 'year')
 
 def datetime_round(datetime_obj, period, round_up=False):
     ''' Round the passed datetime to a suitable even number, based on the period.
@@ -82,10 +82,10 @@ def datetime_round(datetime_obj, period, round_up=False):
     elif period == 'week':
         plus_one = (0, 1)[round_up and (hour != 0 or minute != 0)]
         stamp = mktime((year, month, day + plus_one, 0, 0, 0, -1, -1, -1))
-    elif period == 'day' or period == '12h':
+    elif period in ('day', '12h'):
         plus_one = (0, 1)[round_up and minute != 0]
         stamp = mktime((year, month, day, hour + plus_one, 0, 0, -1, -1, -1))
-    elif period == 'hour':
+    elif period in ('3h', 'hour'):
         stamp = mktime((year, month, day, hour, minute, 0, -1, -1, -1))
     return datetime.fromtimestamp(stamp, datetime_obj.tzinfo)
 
@@ -93,6 +93,7 @@ def datetimes_from_datetime_and_period(begin_date=None, end_date=None, period=No
     def period_add(period, in_date, multiplier):
         year, month, day, hour, minute, _, _, _, _ = in_date.timetuple()
         if period == 'hour': stamp = mktime((year, month, day, hour + multiplier, minute, 0, -1, -1, -1))
+        elif period == '3h': stamp = mktime((year, month, day, hour + multiplier * 3, minute, 0, -1, -1, -1))
         elif period == '12h': stamp = mktime((year, month, day, hour + multiplier * 12, minute, 0, -1, -1, -1))
         elif period == 'day': stamp = mktime((year, month, day + multiplier, hour, minute, 0, -1, -1, -1))
         elif period == 'week': stamp = mktime((year, month, day + multiplier * 7, hour, minute, 0, -1, -1, -1))
