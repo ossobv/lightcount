@@ -41,9 +41,9 @@ class StandardGraph:
         self.use_packets_not_bytes = bool(use_packets_not_bytes)
 
     def create_figure(self):
-        def plot_lines(ax, xvalues, result_list):
+        def plot_lines(ax, xvalues, result_list, high_res=False):
             def fix_data(x, y, is_log=False):
-                # Drop trailing None's (happens when querying "current graphs because we align on sensible periods)
+                # Drop trailing None's (happens when querying "current" graphs because we align on sensible periods)
                 x, y = list(x), list(y)
                 while len(y) and y[-1] is None:
                     x.pop()
@@ -64,19 +64,30 @@ class StandardGraph:
 
             color_n = 0
             lines = []
+
+            # In the high resolution case, we draw pretty pluses on every data point.
+            if high_res:
+                marker = '+'
+            else:
+                marker = ''
+            
             for result_n, result in enumerate(result_list):
                 label_append = (' (%i)' % (result_n + 1), '')[len(result_list)==1]
                 if show_input_output_separately:
                     lines.append({'x': xvalues, 'y': result.get_in_bps(), 'label': 'input%s' % label_append, \
-                                  'color': colors[color_n % len(colors)], 'linewidth': 2.0, 'alpha': 0.5})
+                                  'alpha': 0.5, 'color': colors[color_n % len(colors)], 'linewidth': 2.0, \
+                                  'marker': marker})
                     color_n += 1
                     lines.append({'x': xvalues, 'y': result.get_out_bps(), 'label': 'output%s' % label_append, \
-                                  'color': colors[color_n % len(colors)], 'linewidth': 2.0, 'alpha': 0.5})
+                                  'alpha': 0.5, 'color': colors[color_n % len(colors)], 'linewidth': 2.0, \
+                                  'marker': marker})
                     color_n += 1
                 else:
                     lines.append({'x': xvalues, 'y': result.get_io_bps(), 'label': 'in/out%s' % label_append, \
-                                  'color': colors[color_n % len(colors)], 'linewidth': 2.0, 'alpha': 0.5})
+                                  'alpha': 0.5, 'color': colors[color_n % len(colors)], 'linewidth': 2.0, \
+                                  'marker': marker})
                     color_n += 1
+
                 if self.period.get_period() == 'month' and self.show_billing_line:
                     x = (
                         max(xvalues[0], date2num(self.period.get_begin_date())),
@@ -178,7 +189,7 @@ class StandardGraph:
             ax.set_yscale('log')
 
         # Draw lines, axes, legend and grid
-        plot_lines(ax, self.period.get_mpl_sample_times(), self.result_list)
+        plot_lines(ax, self.period.get_mpl_sample_times(), self.result_list, self.period.is_high_res())
         format_x_axis(ax)
         format_y_axis(ax)
         format_legend(ax)

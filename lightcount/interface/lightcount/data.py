@@ -209,7 +209,14 @@ class Data(object):
         def get_sample_times(self):
             return range(self.canonical_begin_date(), self.canonical_end_date() + 1, lightcount.INTERVAL_SECONDS)
         def get_mpl_sample_times(self):
-            return mpl_range(self.begin_date, self.end_date + timedelta(seconds=1), timedelta(seconds=lightcount.INTERVAL_SECONDS))
+            # A bit of a hack: the data points are stored at the begin of the interval, but the usage is in the
+            # middle. Returning the data points offset by half the interval yields more correct graphs
+            # but this is only desirable for high resolution images (few data points).
+            if self.is_high_res(): offset = timedelta(seconds=lightcount.INTERVAL_SECONDS/2)
+            else: offset = timedelta(seconds=0)
+            return mpl_range(self.begin_date + offset, self.end_date + offset + timedelta(seconds=1), timedelta(seconds=lightcount.INTERVAL_SECONDS))
+        def is_high_res(self):
+            return self.period in ('3h', '12h')
         def __str__(self):
             return '<period (%s) between %s and %s>' % (self.period, self.begin_date, self.end_date)
 
@@ -243,8 +250,9 @@ class Data(object):
             # Execute query
             values = self.storage.fetch_all(' '.join(q), d)
             #print '\n(', re.sub(r'\s+', ' ', ' '.join(q) % d), ' -- ', self.human_query, ')\n'
-            # Make sure every sample in the period interval exists (0 if not found)
-            now = time() - lightcount.INTERVAL_SECONDS # can't predict data in future
+            # Make sure every sample in the period interval exists (0 if not found).
+            # We can't predict the future, so we add None's after now.
+            now = time() - 1.5 * lightcount.INTERVAL_SECONDS # multiply by 1.5 to allow for some clock skew
             new_values = [
                 (long(t), (0L, None)[t >= now], (0L, None)[t >= now], (0L, None)[t >= now], (0L, None)[t >= now])
                 for t in self.period.get_sample_times()
