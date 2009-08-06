@@ -83,7 +83,7 @@ class Data(object):
                 ips = getaddrinfo(host, None, AF_INET, 0) # AI_CANONNAME does not work :(
                 ip4 = ips[0][4][0]
                 try: rev = gethostbyaddr(ip4)[0]
-                except herror: rev = self.canonicalize_ip4(host4)[1]
+                except herror: rev = self.canonicalize_ip4(host)[1]
             except gaierror:
                 return self.canonicalize_ip4(host)
             return bits.inet_atol(ip4), rev
