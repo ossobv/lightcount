@@ -33,7 +33,7 @@ along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 static pthread_t timer__thread;
 static void *timer__memory[2];		/* memory to store in non-volatile space */
 static void *timer__memp;		/* memory that's currently written to */
-static int timer__done;			/* whether we're done */
+static volatile int timer__done;	/* whether we're done */
 
 
 static void *timer__run(void *thread_arg);
