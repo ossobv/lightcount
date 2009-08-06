@@ -4,6 +4,11 @@ DROP TABLE IF EXISTS node_tbl;
 CREATE TABLE node_tbl (
 	node_id TINYINT UNSIGNED AUTO_INCREMENT NOT NULL,
 	node_name VARCHAR(255) NOT NULL,
+	-- Set the expect_data_interval to non-NULL to check if you're still
+	-- getting input from this node. This defines how long there may be no
+	-- new data for this node before a warning is sent (see contrib
+	-- cron.hourly lightcountheartbeat for a checking method).
+	expect_data_interval INT UNSIGNED NULL DEFAULT NULL, -- seconds
 	PRIMARY KEY (node_id),
 	KEY (node_name)
 );

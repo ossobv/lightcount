@@ -1,0 +1,40 @@
+#!/bin/sh
+
+# Configure the mysql --batch command here.
+MYSQL="/usr/bin/mysql -h mysql.example.com -u lightcount_user \
+       -plightcount_password lightcount_db --batch"
+
+# Run the check
+$MYSQL -e "SELECT node_id, node_name, \
+           UNIX_TIMESTAMP(NOW()) - expect_data_interval AS now \
+           FROM node_tbl WHERE expect_data_interval IS NOT NULL" \
+    | sed 1d | while read row ; do
+        node_id="`echo "$row" | cut -f 1`"
+        node_name="`echo "$row" | cut -f 2`"
+        now="`echo "$row" | cut -f 3`"
+
+        res="`$MYSQL -e "SELECT unixtime FROM sample_tbl WHERE \
+                         node_id = $node_id AND unixtime >= $now LIMIT 1" \
+             | sed 1d`"
+	if [ -z "$res" ] ; then
+		# No hits... bad... write message to be caught by caller
+cat << __EOF__
+================================================================================
+MISSING DATA FOR $node_name
+================================================================================
+LightCount expected to find recent data for traffic sniffing node $node_name.
+This expectation was not met!
+
+This can mean three things:
+(1) There is so little traffic on your network that you need to tweak
+    expect_data_interval.
+(2) The node is not supposed to be active: set expect_data_interval to NULL.
+(3) The sniffing node can not fill the database with data for whatever reason.
+
+This last one is bad and can be caused by one or more of:
+- The node cannot reach the database.
+- The database does not accept the data.
+================================================================================
+__EOF__
+	fi
+done
