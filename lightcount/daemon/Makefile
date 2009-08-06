@@ -1,5 +1,4 @@
 CFLAGS = -Wall -g
-CPPFLAGS = -DDONT_STORE_ZERO_ENTRIES
 LDFLAGS = -Wall -g -lpthread -lmysqlclient
 BINS = bin/lightcount bin/lightcount.fast bin/lightcount.slow
 OBJS = obj/lightcount.o obj/memory.o obj/sniff_packsock.o obj/storage_my.o obj/timer.o obj/util.o
