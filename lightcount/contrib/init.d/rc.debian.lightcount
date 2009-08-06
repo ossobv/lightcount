@@ -38,7 +38,7 @@ case "$1" in
   stop)
 	log_begin_msg "Stopping $DESC: $NAME"
 	start-stop-daemon --stop --quiet --exec "$DAEMON"
-	while pidof -s "$DAEMON" ; do echo -n . ; sleep 1 ; done
+	while pidof -s "$DAEMON" >/dev/null ; do echo -n . ; sleep 1 ; done
 	log_end_msg $?
 	;;
   reload|restart|force-reload)
