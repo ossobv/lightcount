@@ -412,3 +412,62 @@ class Data(object):
                 ))
         if progress_callback:
             progress_callback(end_date - begin_date, end_date - begin_date)
+
+    def summarize_ip(self, result, dest_file, progress_callback=None):
+        where = ''
+        if result.query: where = 'AND (%s)' % result.query
+
+        # We do node_id => node_name and ip => dotted-ip conversion in python
+        # to save bandwidth and sql resources
+        query = '''
+            SELECT node_id, vlan_id, ip, SUM(in_pps), SUM(in_bps), SUM(out_pps), SUM(out_bps)
+            FROM sample_tbl
+            WHERE (%%(begin_date)s <= unixtime AND unixtime < %%(end_date)s) %s
+            GROUP BY node_id, vlan_id, ip
+        ''' % where
+
+        begin_date = result.get_period().canonical_begin_date()
+        end_date = result.get_period().canonical_end_date()
+        seconds_at_a_time = 3 * 3600
+
+        # Use a smaller period and several queries to get our results
+        # Store the results in a temporary dictionary
+        results = {}
+        for date in range(begin_date, end_date, seconds_at_a_time): # [begin_date, end_date)
+            if progress_callback:
+                progress_callback(date - begin_date, 1.1 * (end_date - begin_date))
+            for row in self.storage.fetch_all(query, {'begin_date': date, 'end_date': min(end_date, date + seconds_at_a_time)}):
+                if row[2] not in results:
+                    results[row[2]] = [set(), set(), 0, 0, 0, 0]
+                results[row[2]][0].add(row[0])
+                results[row[2]][1].add(row[1])
+                results[row[2]][2] += row[3]
+                results[row[2]][3] += row[4]
+                results[row[2]][4] += row[5]
+                results[row[2]][5] += row[6]
+        if progress_callback:
+            progress_callback(end_date - begin_date, 1.1 * (end_date - begin_date))
+
+        # Flatten dictionary
+        unixtimes = '%d..%d' % (begin_date, end_date)
+        flat = []
+        for ip in results:
+            flat.append((
+                unixtimes,
+                self.units.canonicalize_ip4(ip)[1].replace('"', '""'),
+                len(results[ip][0]),
+                len(results[ip][1]),
+                results[ip][2], results[ip][3],
+                results[ip][4], results[ip][5]
+            ))
+   
+        # Sort dictionary
+        flat.sort(cmp=lambda x, y: -cmp(x[5] + x[7], y[5] + y[7]))
+
+        # Write output
+        dest_file.write('unixtimes,ip,nodes,vlans,in_pps,in_bps,out_pps,out_bps\n')
+        for row in flat:
+            dest_file.write('"%s","%s",%d,%d,%d,%d,%d,%d\n' % row)
+        if progress_callback:
+            progress_callback(1.1 * (end_date - begin_date), 1.1 * (end_date - begin_date))
+

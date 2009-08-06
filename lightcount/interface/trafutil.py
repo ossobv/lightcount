@@ -68,7 +68,7 @@ def main(cli_arguments):
     # Check parameters
     if len(args) == 0: raise ParameterError('Please supply a command or -h for help')
     elif len(args) == 1 and args[0] == 'stat': command = args[0]
-    elif len(args) == 2 and args[0] in ('dump', 'graph', 'graphstat', 'statgraph'): command = args[0]
+    elif len(args) == 2 and args[0] in ('dump', 'graph', 'graphstat', 'statgraph', 'sumip'): command = args[0]
     else: raise ParameterError('Invalid command or too many/few parameters')
 
     # Check invalid option combinations
@@ -96,6 +96,7 @@ def main(cli_arguments):
     elif command == 'graph': do_statgraph(data=data, period=period, options=scratchpad, graph=args[1])
     elif command == 'stat': do_statgraph(data=data, period=period, options=scratchpad, stat='-')
     elif command in ('graphstat', 'statgraph'): do_statgraph(data=data, period=period, options=scratchpad, stat='-', graph=args[1])
+    elif command == 'sumip': do_sumip(data=data, period=period, options=scratchpad, file=args[1])
 
 
 def do_dump(data, period, options, file):
@@ -113,6 +114,20 @@ def do_dump(data, period, options, file):
     data.serialize(result=result, dest_file=csv, progress_callback=print_percent)
     print 'done'
 
+def do_sumip(data, period, options, file):
+    def print_percent(current, end):
+        print '\b\b\b\b\b%3d%%' % (100.0 * float(current) / float(end)),
+        
+    if len(options['queries']) > 1: raise ParameterError('Sum command can take only one query')
+    # Parse optional query or create the everything-query
+    try: result = data.parse_queries(period=period, queries=options['queries'])[0]
+    except (AssertionError, ValueError), e: raise ParameterError('Error parsing query: %s' % e)
+    # Work on the summary
+    csv = open(file, 'w')
+    print 'Summarizing data by IP ...   0%',
+    data.summarize_ip(result=result, dest_file=csv, progress_callback=print_percent)
+    print 'done'
+
 def do_help(): 
     print '''Usage: trafutil.py COMMAND PARAMETERS OPTIONS
 Perform analysis, backups or drawing of lightcount data.
@@ -125,6 +140,8 @@ Commands available are:
                 Parameters: none
   statgraph     A combination of the stat and graph commands. Parameters: graph
                 filename
+  sumip         Dumps a summary by IP of all data or only that supplied by a
+                single query (-q) to a CSV file. Parameters: filename
 
 File selection:
   -c, --config-file=F   read config file F (dfl: ./lightcount.conf)
