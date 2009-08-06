@@ -83,9 +83,9 @@ struct sniff_ip {
     uint32_t dst;	    /* dest address */
 };
 
-static void *sniff__memory[2];	/* two locations to store counts in */
-static void *sniff__memp;	/* the "current" memory location */
-static int sniff__done;		/* whether we're done */
+static void *sniff__memory[2];	    /* two locations to store counts in */
+static void *sniff__memp;	    /* the "current" memory location */
+static volatile int sniff__done;    /* whether we're done */
 
 
 static void sniff__switch_memory(int signum);
@@ -179,7 +179,7 @@ void sniff_loop(int packet_socket, void *memory1, void *memory2) {
 #endif
 
     do {
-	while ((ret = recvfrom(
+	while (!sniff__done && (ret = recvfrom(
 	    packet_socket,
 	    datagram,
 	    ETHER_IP_SIZE,
