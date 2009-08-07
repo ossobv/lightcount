@@ -1,6 +1,6 @@
-/* vim: set ts=8 sw=4 sts=4 noet: 
-========================================================================
-Copyright (C) 2008, OSSO B.V.
+/* vim: set ts=8 sw=4 sts=4 noet: */
+/*======================================================================
+Copyright (C) 2008,2009 OSSO B.V. <walter+lightcount@osso.nl>
 This file is part of LightCount.
 
 LightCount is free software: you can redistribute it and/or modify
@@ -15,13 +15,14 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
-========================================================================
-*/
+======================================================================*/
+
 #include "lightcount.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
 
 int main(int argc, char const *const *argv) {
     int socket = -1;

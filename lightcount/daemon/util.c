@@ -1,6 +1,6 @@
-/* vim: set ts=8 sw=4 sts=4 noet: 
-========================================================================
-Copyright (C) 2008, OSSO B.V.
+/* vim: set ts=8 sw=4 sts=4 noet: */
+/*======================================================================
+Copyright (C) 2008,2009 OSSO B.V. <walter+lightcount@osso.nl>
 This file is part of LightCount.
 
 LightCount is free software: you can redistribute it and/or modify
@@ -15,9 +15,10 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
-========================================================================
-*/
+======================================================================*/
+
 #include "lightcount.h"
+#include "endian.h"
 #include <sys/utsname.h>
 #include <assert.h>
 #include <signal.h>
@@ -30,18 +31,6 @@ along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 # include <sys/types.h>
 # include <unistd.h>
 #endif /* !(_BSD_SOURCE || _XOPEN_SOURCE >= 500) */
-
-/* Endianness */
-#if !defined(_BIG_ENDIAN) && !defined(_LITTLE_ENDIAN)
-# include <endian.h>
-# if __BYTE_ORDER == __BIG_ENDIAN
-#  define _BIG_ENDIAN
-# elif __BYTE_ORDER == __LITTLE_ENDIAN
-#  define _LITTLE_ENDIAN
-# else
-#  error Byte order undefined
-# endif
-#endif
 
 /* Fix non-bsd signal(2) behaviour when sigaction(2) is unavailable */
 #if !(__USE_POSIX || __USE_BSD)
@@ -125,10 +114,10 @@ char *util_inet_htoa(uint32_t ip4) {
     sprintf(
 	static_buf,
 	"%" SCNu8 ".%" SCNu8 ".%" SCNu8 ".%" SCNu8,
-#if defined(_BIG_ENDIAN)
-	ip48[0], ip48[1], ip48[2], ip48[3]
-#elif defined(_LITTLE_ENDIAN)
+#if BYTE_ORDER == LITTLE_ENDIAN
         ip48[3], ip48[2], ip48[1], ip48[0]
+#elif BYTE_ORDER == BIG_ENDIAN
+	ip48[0], ip48[1], ip48[2], ip48[3]
 #endif
     );
     return static_buf;

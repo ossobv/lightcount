@@ -1,6 +1,8 @@
-/* vim: set ts=8 sw=4 sts=4 noet: 
-========================================================================
-Copyright (C) 2008, OSSO B.V.
+#ifndef INCLUDED_LIGHTCOUNT_H
+#define INCLUDED_LIGHTCOUNT_H
+/* vim: set ts=8 sw=4 sts=4 noet: */
+/*======================================================================
+Copyright (C) 2008,2009 OSSO B.V. <walter+lightcount@osso.nl>
 This file is part of LightCount.
 
 LightCount is free software: you can redistribute it and/or modify
@@ -15,8 +17,7 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
-========================================================================
-*/
+======================================================================*/
 #include <sys/types.h>
 #include <inttypes.h>
 
@@ -137,3 +138,5 @@ char *util_inet_htoa(uint32_t ip4);
 #if !(_BSD_SOURCE || _XOPEN_SOURCE >= 500)
 int usleep(unsigned usecs);
 #endif /* !(_BSD_SOURCE || _XOPEN_SOURCE >= 500) */
+
+#endif /* INCLUDED_LIGHTCOUNT_H */

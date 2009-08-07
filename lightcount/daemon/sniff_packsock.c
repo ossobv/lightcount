@@ -1,6 +1,6 @@
-/* vim: set ts=8 sw=4 sts=4 noet: 
-========================================================================
-Copyright (C) 2008, OSSO B.V.
+/* vim: set ts=8 sw=4 sts=4 noet: */
+/*======================================================================
+Copyright (C) 2008,2009 OSSO B.V. <walter+lightcount@osso.nl>
 This file is part of LightCount.
 
 LightCount is free software: you can redistribute it and/or modify
@@ -15,11 +15,15 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
-========================================================================
+======================================================================*/
+
+/*
 NOTE: Raise SIGUSR1 when you want it to switch memory.
 NOTE: Its your job to put the interfaces in promiscuous mode.
 */
+
 #include "lightcount.h"
+#include "endian.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <net/if.h>
@@ -31,24 +35,12 @@ NOTE: Its your job to put the interfaces in promiscuous mode.
 #include <unistd.h>
 #include <netpacket/packet.h> /* linux-specific: struct_ll and PF_PACKET */
 
-/* Endianness */
-#if !defined(_BIG_ENDIAN) && !defined(_LITTLE_ENDIAN)
-# include <endian.h>
-# if __BYTE_ORDER == __BIG_ENDIAN
-#  define _BIG_ENDIAN
-# elif __BYTE_ORDER == __LITTLE_ENDIAN
-#  define _LITTLE_ENDIAN
-# else
-#  error Byte order undefined
-# endif
-#endif
-
 /* Static constants (also found in linux/if_ether.h) */
-#if defined(_LITTLE_ENDIAN)
+#if BYTE_ORDER == LITTLE_ENDIAN
 # define ETH_P_ALL 0x0300   /* all frames */
 # define ETH_P_IP 0x0008    /* IP frames */
 # define ETH_P_8021Q 0x0081 /* 802.1q vlan frames */
-#elif defined(_BIG_ENDIAN)
+#elif BYTE_ORDER == BIG_ENDIAN
 # define ETH_P_ALL 0x0003   /* all frames */
 # define ETH_P_IP 0x0800    /* IP frames */
 # define ETH_P_8021Q 0x8100 /* 802.1q vlan frames */
@@ -196,9 +188,9 @@ void sniff_loop(int packet_socket, void *memory1, void *memory2) {
 		    sniff__memp,
 		    ntohl(ipq->src),
 		    ntohl(ipq->dst),
-#if defined(_LITTLE_ENDIAN)
+#if BYTE_ORDER == LITTLE_ENDIAN
 		    ((uint8_t*)&ether->pcp_cfi_vid)[1] | ((((uint8_t*)&ether->pcp_cfi_vid)[0] & 0xf) << 8),
-#elif defined(_BIG_ENDIAN)
+#elif BYTE_ORDER == BIG_ENDIAN
 		    ether->pcp_cfi_vid & 0xfff,
 #endif
 		    ntohs(ipq->len) + 22
@@ -246,9 +238,9 @@ static void sniff__test_memory_enum(uint32_t ip, struct ipcount_t const *ipcount
     uint8_t *ip8 = (uint8_t*)&ip;
     fprintf(stderr, " * %" SCNu8 ".%" SCNu8 ".%" SCNu8 ".%" SCNu8
 	    " pktIO %" SCNu32 "/%" SCNu32 " bytesIO %" SCNu64 "/%" SCNu64 " vlan# %" SCNu16 "\n",
-#if defined(_LITTLE_ENDIAN)
+#if BYTE_ORDER == LITTLE_ENDIAN
 	    ip8[3], ip8[2], ip8[1], ip8[0],
-#elif defined(_BIG_ENDIAN)
+#elif BYTE_ORDER == BIG_ENDIAN
 	    ip8[0], ip8[1], ip8[2], ip8[3],
 #else
 	    0, 0, 0, 0,
