@@ -12,6 +12,9 @@
 + Use getopt() and read more from config file (e.g. interface)
 + Get nodename from config file so multiple interfaces can be observed
   on one host. (Otherwise we get PK conflicts in DB.)
++ It is quite possible to speed up the data insertion by leaving the IP
+  selection to the daemon instead of to the MySQL query (the DUAL SELECT
+  in storage_my.c).
 
 ------------------------------------------------------------------------
   Documentation
