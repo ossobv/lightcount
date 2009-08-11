@@ -1,4 +1,7 @@
+------------------------------------------------------------------------
 -- MySQL lightcount SQL create script
+-- (see maintenance tips below)
+------------------------------------------------------------------------
 
 DROP TABLE IF EXISTS node_tbl;
 CREATE TABLE node_tbl (
@@ -57,3 +60,34 @@ SELECT
 	vlan_id,
 	in_pps, in_bps, out_pps, out_bps
 FROM sample_tbl LEFT JOIN node_tbl USING (node_id);
+
+
+------------------------------------------------------------------------
+-- Maintenance tip #1
+-- REMOVING RECORDS THAT ARE NOT IN ip_range_tbl FROM sample_tbl
+------------------------------------------------------------------------
+
+-- SELECT * FROM sample_tbl s
+-- LEFT JOIN ip_range_tbl t ON t.node_id IS NULL
+--     AND t.ip_begin <= s.ip AND s.ip <= t.ip_end
+-- WHERE s.unixtime >= 1249884000 AND s.unixtime < 1249884000 + 28800
+--     AND t.ip_begin IS NULL;
+--
+-- +------------+---------+---------+------------+--------+--------+---------+---------+----------+--------+---------+
+-- | unixtime   | node_id | vlan_id | ip         | in_pps | in_bps | out_pps | out_bps | ip_begin | ip_end | node_id |
+-- +------------+---------+---------+------------+--------+--------+---------+---------+----------+--------+---------+
+-- | 1249902960 |       1 |       0 |  174393876 |      0 |     20 |       0 |      31 |     NULL |   NULL |    NULL | 
+-- | 1249902960 |       1 |       0 |  174393886 |      0 |      0 |       0 |       9 |     NULL |   NULL |    NULL | 
+-- ...
+-- | 1249902990 |       1 |       0 | 1607978050 |      0 |     43 |       0 |      72 |     NULL |   NULL |    NULL | 
+-- | 1249902990 |       1 |       0 | 3758096385 |      0 |     43 |       0 |       0 |     NULL |   NULL |    NULL | 
+-- +------------+---------+---------+------------+--------+--------+---------+---------+----------+--------+---------+
+-- 18 rows in set (1.01 sec)
+-- 
+-- DELETE FROM s USING sample_tbl s
+-- LEFT JOIN ip_range_tbl t ON t.node_id IS NULL
+--     AND t.ip_begin <= s.ip AND s.ip <= t.ip_end
+-- WHERE s.unixtime >= 1249884000 AND s.unixtime < 1249884000 + 28800
+--     AND t.ip_begin is null;
+--
+-- Query OK, 18 rows affected (1.48 sec)
