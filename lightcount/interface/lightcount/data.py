@@ -18,6 +18,7 @@
 #=======================================================================
 import MySQLdb as db, lightcount, math, re
 from _mysql_exceptions import ProgrammingError
+from time import sleep
 from lightcount import bits
 from lightcount.timeutil import *
 
@@ -410,6 +411,8 @@ class Data(object):
                     self.units.canonicalize_ip4(row[3])[1].replace('"', '""'),
                     row[4], row[5], row[6], row[7]
                 ))
+                # Be friendly to the database, and increase chance that new data can get written
+                sleep(0) # sleep 0 behaves like yield
         if progress_callback:
             progress_callback(end_date - begin_date, end_date - begin_date)
 
@@ -445,6 +448,8 @@ class Data(object):
                 results[row[2]][3] += row[4]
                 results[row[2]][4] += row[5]
                 results[row[2]][5] += row[6]
+                # Be friendly to the database, and increase chance that new data can get written
+                sleep(0) # sleep 0 behaves like yield
         if progress_callback:
             progress_callback(end_date - begin_date, 1.1 * (end_date - begin_date))
 
