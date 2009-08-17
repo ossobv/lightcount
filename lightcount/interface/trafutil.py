@@ -40,7 +40,7 @@ def main(cli_arguments):
         cli_arguments,
         'c:q:g:t:z:h',
         ('config-file=', 'query=', 'write-graph=', 'time-zone=', 'period=', 'begin-date=',
-                'end-date=', 'log', 'linear', 'help', 'version')
+                'end-date=', 'log', 'linear', 'quiet', 'help', 'version')
     )
     scratchpad = {
         'date': {},
@@ -61,6 +61,7 @@ def main(cli_arguments):
             if 'log_scale' in scratchpad:
                 raise ParameterError('Specify either --linear or --log and do it once')
             scratchpad['log_scale'] = key == '--log'
+        elif key == '--quiet': set_or_raise(scratchpad, 'quiet', True, 'quiet mode')
         elif key in ('-h', '--help'): do_help() ; sys.exit(0)
         elif key == '--version': do_version() ; sys.exit(0)
         else: assert False, 'Programming error'
@@ -81,6 +82,7 @@ def main(cli_arguments):
     for name in ('begin_date', 'end_date', 'period'):
         if name not in scratchpad['date']:
             scratchpad['date'][name] = None
+    if 'quiet' not in scratchpad: scratchpad['quiet'] = False
         
     # Get data object
     try: data = Data(Config(scratchpad['config_file']))
@@ -110,9 +112,9 @@ def do_dump(data, period, options, file):
     except (AssertionError, ValueError), e: raise ParameterError('Error parsing query: %s' % e)
     # Write it out
     csv = open(file, 'w')
-    print 'Writing data to %s ...   0%%' % file,
-    data.serialize(result=result, dest_file=csv, progress_callback=print_percent)
-    print 'done'
+    if not options['quiet']: print 'Writing data to %s ...   0%%' % file,
+    data.serialize(result=result, dest_file=csv, progress_callback=(print_percent, None)[options['quiet']])
+    if not options['quiet']: print 'done'
 
 def do_sumip(data, period, options, file):
     def print_percent(current, end):
@@ -124,9 +126,9 @@ def do_sumip(data, period, options, file):
     except (AssertionError, ValueError), e: raise ParameterError('Error parsing query: %s' % e)
     # Work on the summary
     csv = open(file, 'w')
-    print 'Summarizing data by IP ...   0%',
-    data.summarize_ip(result=result, dest_file=csv, progress_callback=print_percent)
-    print 'done'
+    if not options['quiet']: print 'Summarizing data by IP ...   0%',
+    data.summarize_ip(result=result, dest_file=csv, progress_callback=(print_percent, None)[options['quiet']])
+    if not options['quiet']: print 'done'
 
 def do_help(): 
     print '''Usage: trafutil.py COMMAND PARAMETERS OPTIONS
@@ -166,6 +168,9 @@ Graph options:
       --linear          display the graph with a linear scale (default)
       --log             display the graph with a logarithmic scale
 
+Other options:
+      --quiet           hide obvious output like completion counters
+
 Nodes may specified as a node name or a node id. IP addresses may be specified
 in the normal numbers-and-dots notation or as an unsigned integer. Nets are
 specified as IP addresses with a trailing slash and a netmask number.
@@ -196,10 +201,10 @@ def do_statgraph(data, period, options, stat=None, graph=None):
                 )
     
     if graph is not None:
-        print 'Writing %s graph to file %s ...' % (('linear', 'logarithmic')[options['log_scale']], graph),
+        if not options['quiet']: print 'Writing %s graph to file %s ...' % (('linear', 'logarithmic')[options['log_scale']], graph),
         image = StandardGraph(result_list=result_list, log_scale=options['log_scale'], show_billing_line=True)
         image.write(graph)
-        print 'done'
+        if not options['quiet']: print 'done'
 
 def do_version():
     print 'trafutil.py (svn-version)'
