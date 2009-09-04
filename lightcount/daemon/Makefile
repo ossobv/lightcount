@@ -1,4 +1,7 @@
 # vim:ts=8:noet
+#
+# Makefile for the lightcount traffic daemon.
+# By Walter Doekes, 2009.
 
 ifeq ($(CFLAGS),)
     CFLAGS = -Wall
@@ -6,50 +9,43 @@ endif
 ifeq ($(LDFLAGS),)
     LDFLAGS = -Wall -lpthread -lmysqlclient
 endif
-ifeq ($(RENAME),)
-    RENAME = mv
-endif
 
-obj/%.o: %.c
-	$(COMPILE.c) $< -o $@
-
-.PHONY: lightcount lightcount-nodebug lightcount-verbose all clean
+.PHONY: all clean \
+	lightcount lightcount-nodebug lightcount-verbose
 
 all: lightcount lightcount-nodebug lightcount-verbose
 
 clean:
-	$(RM) bin/* obj/*
+	@rm -r bin
 
 lightcount:
-	$(RM) obj/*
-	CFLAGS="$(CFLAGS) -g -O3" \
+	APPNAME="$@" \
+	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer util" \
 	CPPFLAGS="$(CPPFLAGS)" \
+	CFLAGS="$(CFLAGS) -g -O3" \
 	LDFLAGS="$(LDFLAGS) -g" \
-	$(MAKE) bin/temp-default-lightcount
-	$(RENAME) bin/temp-default-lightcount bin/lightcount
+	$(MAKE) bin/$@
 
 lightcount-nodebug:
-	$(RM) obj/*
-	CFLAGS="$(CFLAGS) -O3" \
+	APPNAME="$@" \
+	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer util" \
 	CPPFLAGS="$(CPPFLAGS) -DNDEBUG" \
+	CFLAGS="$(CFLAGS) -O3" \
 	LDFLAGS="$(LDFLAGS)" \
-	$(MAKE) bin/temp-default-lightcount
-	$(RENAME) bin/temp-default-lightcount bin/lightcount-nodebug
-	strip bin/lightcount-nodebug
+	$(MAKE) bin/$@
+	@strip bin/$@
 
 lightcount-verbose:
-	$(RM) obj/*
-	CFLAGS="$(CFLAGS) -g -O0" \
+	APPNAME="$@" \
+	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer util" \
 	CPPFLAGS="$(CPPFLAGS) -DDEBUG -DPRINT_EVERY_PACKET" \
+	CFLAGS="$(CFLAGS) -g -O0" \
 	LDFLAGS="$(LDFLAGS) -g" \
-	$(MAKE) bin/temp-default-lightcount
-	$(RENAME) bin/temp-default-lightcount bin/lightcount-verbose
+	$(MAKE) bin/$@
 
-bin/temp-default-lightcount: \
-	obj/lightcount.o \
-	obj/memory_simplehash.o \
-	obj/sniff_packsock.o \
-	obj/storage_my.o \
-	obj/timer.o \
-	obj/util.o
-	$(LINK.o) -g $^ -o $@
+
+bin/.$(APPNAME)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(COMPILE.c) $< -o $@
+bin/$(APPNAME): $(addprefix bin/.$(APPNAME)/, $(addsuffix .o, $(MODULES)))
+	$(LINK.o) $^ -o $@
