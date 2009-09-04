@@ -1,7 +1,7 @@
-------------------------------------------------------------------------
+--
 -- MySQL lightcount SQL create script
 -- (see maintenance tips below)
-------------------------------------------------------------------------
+--
 
 DROP TABLE IF EXISTS node_tbl;
 CREATE TABLE node_tbl (
@@ -62,10 +62,10 @@ SELECT
 FROM sample_tbl LEFT JOIN node_tbl USING (node_id);
 
 
-------------------------------------------------------------------------
+--
 -- Maintenance tip #1
 -- REMOVING RECORDS THAT ARE NOT IN ip_range_tbl FROM sample_tbl
-------------------------------------------------------------------------
+--
 
 -- SELECT * FROM sample_tbl s
 -- LEFT JOIN ip_range_tbl t ON t.node_id IS NULL
