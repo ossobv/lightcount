@@ -1,0 +1,5 @@
+# m h  dom mon dow   command
+14,29,44,59 * * * *  /root/lightcount-prunedb.sh
+4   4  *   *   *     /root/lightcount-backupother.sh
+6   4  *   *   2,5   /root/lightcount-backupsamples.sh
+40  4  *   *   *     /root/lightcount-dumpcsv.sh
