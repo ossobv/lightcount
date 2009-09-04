@@ -11,9 +11,10 @@ ifeq ($(LDFLAGS),)
 endif
 
 .PHONY: all clean \
-	lightcount lightcount-nodebug lightcount-verbose
+	lightcount lightcount-nodebug lightcount-verbose \
+	lightcount-test-output
 
-all: lightcount lightcount-nodebug lightcount-verbose
+all: lightcount lightcount-nodebug lightcount-verbose lightcount-test-output
 
 clean:
 	@rm -r bin
@@ -39,6 +40,14 @@ lightcount-verbose:
 	APPNAME="$@" \
 	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer util" \
 	CPPFLAGS="$(CPPFLAGS) -DDEBUG -DPRINT_EVERY_PACKET" \
+	CFLAGS="$(CFLAGS) -g -O0" \
+	LDFLAGS="$(LDFLAGS) -g" \
+	$(MAKE) bin/$@
+
+lightcount-test-output:
+	APPNAME="$@" \
+	MODULES="lightcount memory_testlive sniff_packsock storage_my timer util" \
+	CPPFLAGS="$(CPPFLAGS) -DDEBUG -DINTERVAL_SECONDS=5" \
 	CFLAGS="$(CFLAGS) -g -O0" \
 	LDFLAGS="$(LDFLAGS) -g" \
 	$(MAKE) bin/$@
