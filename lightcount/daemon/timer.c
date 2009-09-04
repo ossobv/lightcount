@@ -27,7 +27,9 @@ along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 
 /* Settings */
-#define INTERVAL_SECONDS 300		/* run the storage engine every N seconds */
+#ifndef INTERVAL_SECONDS
+#   define INTERVAL_SECONDS 300		/* run the storage engine every N seconds */
+#endif /* INTERVAL_SECONDS */
 
 
 static pthread_t timer__thread;

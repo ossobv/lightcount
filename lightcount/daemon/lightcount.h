@@ -48,8 +48,7 @@ struct ipcount_t {
     uint32_t packets_out;
     uint16_t ip_high;
     uint16_t vlan;
-    uint32_t is_used:1,
-	is_reserved:31;
+    uint32_t is_used:1, reserved:31;
 };
 
 /* The `memory_enum` callback type. Gets a 32-bits IP address and an ipcount_t
