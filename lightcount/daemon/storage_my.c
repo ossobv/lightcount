@@ -249,7 +249,8 @@ static int storage__db_prepstmt_begin() {
 
 #ifdef USE_PREPARED_STATEMENTS
 static void storage__db_prepstmt_end() {
-    (void)mysql_stmt_close(storage__mysqlps);
+    if (storage__mysqlps != NULL)
+        (void)mysql_stmt_close(storage__mysqlps);
 }
 #endif /* USE_PREPARED_STATEMENTS */
 
@@ -357,6 +358,10 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
 #endif /* DONT_STORE_ZERO_ENTRIES */
     {
 #ifdef USE_PREPARED_STATEMENTS
+	/* After a failure, we won't try again this run */
+	if (storage__mysqlps == NULL)
+	    return;
+
 	/* Set values in the locations that the prepared statement will be looking at */
 	storage__mysqldataip = ip;
 	storage__mysqldata.vlan = ipcount->vlan;
@@ -367,6 +372,8 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
 
 	if (mysql_stmt_execute(storage__mysqlps) != 0) {
 	    fprintf(stderr, "mysql_stmt_execute: %s\n", mysql_stmt_error(storage__mysqlps));
+	    mysql_stmt_close(storage__mysqlps);
+	    storage__mysqlps = NULL;
 	    return;
 	}
 #ifdef PRINT_EVERY_PACKET
