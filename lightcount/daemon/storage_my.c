@@ -250,7 +250,7 @@ static int storage__db_prepstmt_begin() {
 #ifdef USE_PREPARED_STATEMENTS
 static void storage__db_prepstmt_end() {
     if (storage__mysqlps != NULL)
-        (void)mysql_stmt_close(storage__mysqlps);
+	(void)mysql_stmt_close(storage__mysqlps);
 }
 #endif /* USE_PREPARED_STATEMENTS */
 
@@ -377,9 +377,11 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
 	    return;
 	}
 #ifdef PRINT_EVERY_PACKET
-	assert(mysql_stmt_affected_rows(storage__mysqlps) == 1);
-	fprintf(stderr, "storage__write_ip: ip %" SCNu32 " written\n", ip); /* XXX */
-#endif
+	if (mysql_stmt_affected_rows(storage__mysqlps) >= 1) {
+	    assert(mysql_stmt_affected_rows(storage__mysqlps) == 1);
+	    fprintf(stderr, "storage__write_ip: Data stored for IP %" SCNu32 "\n", ip);
+	}
+#endif /* PRINT_EVERY_PACKET */
 #else /* !USE_PREPARED_STATEMENTS */
 	char buf[BUFSIZ];
 
@@ -404,9 +406,11 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
 	    return;
 	}
 #ifdef PRINT_EVERY_PACKET
-	assert(mysql_affected_rows(storage__mysql) == 1);
-	fprintf(stderr, "storage__write_ip: %s\n", buf);
-#endif
+	if (mysql_affected_rows(storage__mysql) >= 1) {
+	    assert(mysql_affected_rows(storage__mysql) == 1);
+	    fprintf(stderr, "storage__write_ip: %s\n", buf);
+	}
+#endif /* PRINT_EVERY_PACKET */
 #endif /* !USE_PREPARED_STATEMENTS */
     }
 }
