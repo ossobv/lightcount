@@ -39,7 +39,7 @@ lightcount-verbose:
 	$(MAKE) bin/$@
 
 lightcount-test-output:
-	APPNAME="$@" CPPFLAGS="$(CPPFLAGS) -DDEBUG -DINTERVAL_SECONDS=0" \
+	APPNAME="$@" CPPFLAGS="$(CPPFLAGS) -DDEBUG -DLISTEN_SECONDS=0 -DFAKE_INTERVAL_SECONDS=300" \
 	CFLAGS="$(CFLAGS) -g -O0" LDFLAGS="$(LDFLAGS) -g" \
 	MODULES="lightcount memory_testlive sniff_dummy storage_my timer_oneshot util" \
 	$(MAKE) bin/$@

@@ -33,6 +33,7 @@ static MYSQL *storage__mysql;		    /* gets reinitialized every write */
 static int storage__node_id;		    /* may vary per write */
 static uint32_t storage__unixtime_begin;    /* varies per write */
 static uint32_t storage__interval;	    /* may vary per write */
+static uint32_t storage__intervald2;	    /* interval divided by two */
 
 static char storage__conf_host[256];	    /* db hostname/ip */
 static int storage__conf_port;		    /* db port */
@@ -112,6 +113,7 @@ void storage_write(uint32_t unixtime_begin, uint32_t interval, void *memory) {
     /* Store values to use when running `memory_enum`. */
     storage__unixtime_begin = unixtime_begin;
     storage__interval = interval;
+    storage__intervald2 = interval >> 1;
     util_get_safe_node_name(buf, 256); /* 256 < BUFSIZE */
     storage__node_id = storage__db_get_node_id(buf);
     if (storage__node_id == -1) {
@@ -242,6 +244,10 @@ static void storage__rtrim(char *io) {
 
 static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
     char buf[BUFSIZE];
+    uint32_t rnd_packets_in = (ipcount->packets_in + storage__intervald2) / storage__interval;
+    uint64_t rnd_bytes_in = (ipcount->u.bytes_in + storage__intervald2) / storage__interval;
+    uint32_t rnd_packets_out = (ipcount->packets_out + storage__intervald2) / storage__interval;
+    uint64_t rnd_bytes_out = (ipcount->bytes_out + storage__intervald2) / storage__interval;
 
     /* Include select that checks whether IP is in range */
     sprintf(
@@ -249,26 +255,23 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
 	"INSERT INTO sample_tbl (unixtime,node_id,vlan_id,ip,in_pps,in_bps,out_pps,out_bps) "
 	"SELECT "
 	    "%" SCNu32 ",%i,%" SCNu16 ",%" SCNu32 ","
-	    "ROUND(%" SCNu32 "/%" SCNu32 "),ROUND(%" SCNu64 "/%" SCNu32 "),"
-	    "ROUND(%" SCNu32 "/%" SCNu32 "),ROUND(%" SCNu64 "/%" SCNu32 ") "
+	    "%" SCNu32 ",%" SCNu64 ",%" SCNu32 ",%" SCNu64 " "
 	"FROM DUAL WHERE EXISTS ("
 	    "SELECT ip_begin FROM ip_range_tbl "
 	    "WHERE ip_begin <= %" SCNu32 " AND %" SCNu32 " <= ip_end"
 	    " AND (node_id IS NULL OR node_id = %i)"
 #ifdef DONT_STORE_ZERO_ENTRIES
-	    " AND (ROUND(%" SCNu32 "/%" SCNu32 ")<>0 OR ROUND(%" SCNu64 "/%" SCNu32 ")<>0"
-	    " OR ROUND(%" SCNu32 "/%" SCNu32 ")<>0 OR ROUND(%" SCNu64 "/%" SCNu32 ")<>0)"
+	    " AND (%" SCNu32 " <> 0 OR %" SCNu64 " <> 0 "
+	    " OR %" SCNu32 " <> 0 OR %" SCNu64 " <> 0)"
 #endif /* DONT_STORE_ZERO_ENTRIES */
 	")",
 	storage__unixtime_begin, storage__node_id, ipcount->vlan, ip,
-	ipcount->packets_in, storage__interval, ipcount->u.bytes_in, storage__interval,
-	ipcount->packets_out, storage__interval, ipcount->bytes_out, storage__interval,
+	rnd_packets_in, rnd_bytes_in, rnd_packets_out, rnd_bytes_out,
 	ip, ip, storage__node_id
 #ifdef DONT_STORE_ZERO_ENTRIES
-	, ipcount->packets_in, storage__interval, ipcount->u.bytes_in, storage__interval,
-	ipcount->packets_out, storage__interval, ipcount->bytes_out, storage__interval
+	, rnd_packets_in, rnd_bytes_in, rnd_packets_out, rnd_bytes_out
 #endif /* DONT_STORE_ZERO_ENTRIES */
-    ); /* 23 args * len("18446744073709551615") is still only 460 */
+    ); /* 23 args * len("18446744073709551615") is still only 460 (FIXME) */
     if (mysql_query(storage__mysql, buf)) {
 	fprintf(stderr, "mysql_query: %s\n", mysql_error(storage__mysql));
 	return;

@@ -21,7 +21,9 @@ along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 
 
-unsigned memory__testdata[215070]; /* 35845 rows, 20449 zero entries */
+/* 35845 rows of data, of which 5084 zero entries for an interval of 300 seconds,
+ * and 0.0.0.0/0 as IP-filter. */
+unsigned memory__testdata[215070];
 
 
 void memory_help() {
@@ -88,7 +90,8 @@ void memory_enum(void *memory, memory_enum_cb cb) {
  * The following timings are done on a normal machine connected over a low-
  * latency link to a virtual machine hosting a MySQL server (yes, far from
  * optimal, I know); three runs, averaged by eye ;)
- * - Original situation: real/user/sys 1m25.5s 0.220s 0.300s
+ * - Original situation: real/user/sys 1m27.4s 0.220s 0.350s
+ * - Daemon rounding: real/user/sys 1m25.8s 0.190s 0.390s
  */
 	    
 unsigned memory__testdata[] = {
