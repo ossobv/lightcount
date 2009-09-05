@@ -116,6 +116,11 @@ static void *timer__run(void *thread_arg) {
     fprintf(stderr, "timer__run: Thread started.\n");
 #endif
 
+#if LISTEN_SECONDS == 0
+    /* Yield once so the other thread gets to initialize its signal handlers */
+    sleep(1);
+#endif /* LISTEN_SECONDS == 0 */
+
 #ifndef NDEBUG
     fprintf(stderr, "timer__run: Sleep planned for %i seconds.\n", sleep_seconds);
 #endif
