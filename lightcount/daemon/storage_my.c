@@ -180,7 +180,10 @@ static int storage__db_connect() {
 }
 
 static void storage__db_disconnect() {
-    mysql_close(storage__mysql);
+    if (storage__mysql != NULL) {
+        mysql_close(storage__mysql);
+	storage__mysql = NULL;
+    }
 }
 
 #ifdef USE_PREPARED_STATEMENTS
@@ -249,8 +252,10 @@ static int storage__db_prepstmt_begin() {
 
 #ifdef USE_PREPARED_STATEMENTS
 static void storage__db_prepstmt_end() {
-    if (storage__mysqlps != NULL)
+    if (storage__mysqlps != NULL) {
 	(void)mysql_stmt_close(storage__mysqlps);
+	storage__mysqlps = NULL;
+    }
 }
 #endif /* USE_PREPARED_STATEMENTS */
 
@@ -372,8 +377,7 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
 
 	if (mysql_stmt_execute(storage__mysqlps) != 0) {
 	    fprintf(stderr, "mysql_stmt_execute: %s\n", mysql_stmt_error(storage__mysqlps));
-	    mysql_stmt_close(storage__mysqlps);
-	    storage__mysqlps = NULL;
+	    storage__db_prepstmt_end();
 	    return;
 	}
 #ifdef PRINT_EVERY_PACKET
@@ -384,6 +388,10 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
 #endif /* PRINT_EVERY_PACKET */
 #else /* !USE_PREPARED_STATEMENTS */
 	char buf[BUFSIZ];
+
+	/* After a failure, we won't try again this run */
+	if (storage__mysql == NULL)
+	    return;
 
 	/* Include SELECT that checks whether IP is in range */
 	sprintf(
@@ -403,6 +411,7 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
 	); /* 23 args * len("18446744073709551615") is still only 460 (FIXME) */
 	if (mysql_query(storage__mysql, buf)) {
 	    fprintf(stderr, "mysql_query: %s\n", mysql_error(storage__mysql));
+	    storage__db_disconnect();
 	    return;
 	}
 #ifdef PRINT_EVERY_PACKET
