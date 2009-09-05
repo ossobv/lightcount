@@ -86,11 +86,11 @@ void storage_help() {
 	"For calculation purposes no value is the same as all zeroes anyway. But if\n"
 	"you're interested in seeing whether there has been _any_ traffic at all, you'll\n"
 	"want to undefine it.\n"
-	"\n",
+	"\n"
 	"You can define or undefine USE_PREPARED_STATEMENTS to enable/disable use of\n"
 	"MySQL prepared statements. Using them is recommended as it reduces the amount of\n"
 	"traffic sent to the server and the server only has to parse the query once.\n"
-	"\n"
+	"\n",
 #ifdef DONT_STORE_ZERO_ENTRIES
 	"define",
 #else /* !DONT_STORE_ZERO_ENTRIES */
