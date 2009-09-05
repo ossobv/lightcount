@@ -87,12 +87,13 @@ void memory_enum(void *memory, memory_enum_cb cb) {
  * - We can use prepared statements where only the variable parts (skipping
  *   node_id and unixtime) have to be sent.
  *
- * The following timings are done on a normal machine connected over a low-
+ * The following timings are done on a normal machine connected over a low
  * latency link to a virtual machine hosting a MySQL server (yes, far from
  * optimal, I know); three runs, averaged by eye ;)
- * - Original situation: real/user/sys 1m27.4s 0.220s 0.350s
- * - Daemon rounding: real/user/sys 1m25.8s 0.190s 0.390s
- * - + daemon filtering zero entries: real/user/sys 1m12.6s 0.140s 0.330s
+ * - Original situation:               real/user/sys 1m27.4s 0.220s 0.350s
+ * - Daemon rounding:                  real/user/sys 1m25.8s 0.190s 0.390s
+ * - + daemon filtering zero entries:  real/user/sys 1m12.6s 0.140s 0.330s
+ * - + using prepared statements:      real/user/sys  1m8.3s 0.075s 0.300s
  */
 	    
 unsigned memory__testdata[] = {

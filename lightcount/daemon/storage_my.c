@@ -25,11 +25,18 @@ along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 
 #define DONT_STORE_ZERO_ENTRIES 1	    /* delete all entries with all values zero */
+#define USE_PREPARED_STATEMENTS 1	    /* use MySQL prepared statements */
 #define BUFSIZE 2048			    /* all sprintfs below are calculated to fit in this */
 
 
 static char const *storage__config_file;    /* configuration file name */
 static MYSQL *storage__mysql;		    /* gets reinitialized every write */
+#ifdef USE_PREPARED_STATEMENTS
+static MYSQL_STMT *storage__mysqlps;	    /* prepared statement handle */
+static MYSQL_BIND storage__mysqlbind[8];    /* prepared statement bind handles */
+static uint32_t storage__mysqldataip;	    /* prepared statement data container for ip */
+static struct ipcount_t storage__mysqldata; /* prepared statement data container for rest */
+#endif /* USE_PREPARED_STATEMENTS */
 static int storage__node_id;		    /* may vary per write */
 static uint32_t storage__unixtime_begin;    /* varies per write */
 static uint32_t storage__interval;	    /* may vary per write */
@@ -44,6 +51,10 @@ static char storage__conf_dbase[256];	    /* db database */
 
 static int storage__db_connect();
 static void storage__db_disconnect();
+#ifdef USE_PREPARED_STATEMENTS
+static int storage__db_prepstmt_begin();
+static void storage__db_prepstmt_end();
+#endif /* USE_PREPARED_STATEMENTS */
 static int storage__db_get_node_id(char const *safe_node_name);
 static int storage__read_config(char const *config_file);
 static void storage__rtrim(char *io);
@@ -54,6 +65,7 @@ void storage_help() {
     printf(
 	"/********************* module: storage (mysql) ********************************/\n"
 	"#%s DONT_STORE_ZERO_ENTRIES\n"
+	"#%s USE_PREPARED_STATEMENTS\n"
 	"\n"
 	"Stores average values in the MySQL database as specified in the supplied\n"
 	"configuration file. This file gets reloaded on every write, so you can switch\n"
@@ -75,11 +87,20 @@ void storage_help() {
 	"you're interested in seeing whether there has been _any_ traffic at all, you'll\n"
 	"want to undefine it.\n"
 	"\n",
+	"You can define or undefine USE_PREPARED_STATEMENTS to enable/disable use of\n"
+	"MySQL prepared statements. Using them is recommended as it reduces the amount of\n"
+	"traffic sent to the server and the server only has to parse the query once.\n"
+	"\n"
 #ifdef DONT_STORE_ZERO_ENTRIES
-	"define"
+	"define",
 #else /* !DONT_STORE_ZERO_ENTRIES */
+	"undef",
+#endif /* !DONT_STORE_ZERO_ENTRIES */
+#ifdef USE_PREPARED_STATEMENTS
+	"define"
+#else /* !USE_PREPARED_STATEMENTS */
 	"undef"
-#endif
+#endif /* !USE_PREPARED_STATEMENTS */
     );
 }
 
@@ -120,9 +141,22 @@ void storage_write(uint32_t unixtime_begin, uint32_t interval, void *memory) {
 	storage__db_disconnect();
 	return;
     }
+
+#ifdef USE_PREPARED_STATEMENTS
+    /* Prepare MyMSQL prepared statement */
+    if (storage__db_prepstmt_begin() != 0) {
+	storage__db_disconnect();
+	return;
+    }
+#endif /* USE_PREPARED_STATEMENTS */
     
     /* Finally! Insert data! */
     memory_enum(memory, &storage__write_ip);
+
+#ifdef USE_PREPARED_STATEMENTS
+    /* Free MyMSQL prepared statement */
+    storage__db_prepstmt_end();
+#endif /* USE_PREPARED_STATEMENTS */
 
     /* Disconnect */
     storage__db_disconnect();
@@ -148,6 +182,76 @@ static int storage__db_connect() {
 static void storage__db_disconnect() {
     mysql_close(storage__mysql);
 }
+
+#ifdef USE_PREPARED_STATEMENTS
+static int storage__db_prepstmt_begin() {
+    char buf[BUFSIZE];
+
+    if ((storage__mysqlps = mysql_stmt_init(storage__mysql)) == NULL) {
+	fprintf(stderr, "mysql_stmt_init: %s\n", mysql_error(storage__mysql));
+	return -1;
+    }
+
+    /* Include SELECT that checks whether IP is in range */
+    sprintf(buf, 
+	"INSERT INTO sample_tbl (unixtime,node_id,vlan_id,ip,in_pps,in_bps,out_pps,out_bps) "
+	"SELECT %" SCNu32 ",%i,?,?,?,?,?,? "
+	"FROM DUAL WHERE EXISTS ("
+	    "SELECT ip_begin FROM ip_range_tbl "
+	    "WHERE ip_begin <= ? AND ? <= ip_end"
+	    " AND (node_id IS NULL OR node_id = %i)"
+	")",
+	storage__unixtime_begin, storage__node_id, storage__node_id
+    ); /* 23 args * len("18446744073709551615") is still only 460 (FIXME) */
+
+    if (mysql_stmt_prepare(storage__mysqlps, buf, strlen(buf)) != 0) {
+	fprintf(stderr, "mysql_stmt_prepare: %s\n", mysql_stmt_error(storage__mysqlps));
+	(void)mysql_stmt_close(storage__mysqlps);
+	return -1;
+    }
+
+    assert(mysql_stmt_param_count(storage__mysqlps) == 8);
+
+    /* Initialize bind values */
+    memset(storage__mysqlbind, 0, sizeof(storage__mysqlbind));
+    storage__mysqlbind[0].buffer_type = MYSQL_TYPE_SHORT;
+    storage__mysqlbind[0].buffer = (char*)&storage__mysqldata.vlan;
+    storage__mysqlbind[1].buffer_type = MYSQL_TYPE_LONG; 
+    storage__mysqlbind[1].buffer = (char*)&storage__mysqldataip;
+    storage__mysqlbind[2].buffer_type = MYSQL_TYPE_LONG;
+    storage__mysqlbind[2].buffer = (char*)&storage__mysqldata.packets_in;
+    storage__mysqlbind[3].buffer_type = MYSQL_TYPE_LONGLONG;
+    storage__mysqlbind[3].buffer = (char*)&storage__mysqldata.u.bytes_in;
+    storage__mysqlbind[4].buffer_type = MYSQL_TYPE_LONG;
+    storage__mysqlbind[4].buffer = (char*)&storage__mysqldata.packets_out;
+    storage__mysqlbind[5].buffer_type = MYSQL_TYPE_LONGLONG;
+    storage__mysqlbind[5].buffer = (char*)&storage__mysqldata.bytes_out;
+    storage__mysqlbind[6].buffer_type = MYSQL_TYPE_LONG; 
+    storage__mysqlbind[6].buffer = (char*)&storage__mysqldataip;
+    storage__mysqlbind[7].buffer_type = MYSQL_TYPE_LONG; 
+    storage__mysqlbind[7].buffer = (char*)&storage__mysqldataip;
+
+    storage__mysqlbind[0].is_unsigned = storage__mysqlbind[1].is_unsigned
+	    = storage__mysqlbind[2].is_unsigned = storage__mysqlbind[3].is_unsigned
+	    = storage__mysqlbind[4].is_unsigned = storage__mysqlbind[5].is_unsigned
+	    = storage__mysqlbind[6].is_unsigned = storage__mysqlbind[7].is_unsigned
+	    = (my_bool)-1;
+
+    if (mysql_stmt_bind_param(storage__mysqlps, storage__mysqlbind) != 0) {
+	fprintf(stderr, "mysql_stmt_bind: %s\n", mysql_stmt_error(storage__mysqlps));
+	(void)mysql_stmt_close(storage__mysqlps);
+	return -1;
+    }
+
+    return 0;
+}
+#endif /* USE_PREPARED_STATEMENTS */
+
+#ifdef USE_PREPARED_STATEMENTS
+static void storage__db_prepstmt_end() {
+    (void)mysql_stmt_close(storage__mysqlps);
+}
+#endif /* USE_PREPARED_STATEMENTS */
 
 static int storage__db_get_node_id(char const *safe_node_name) {
     char buf[BUFSIZE];
@@ -243,7 +347,6 @@ static void storage__rtrim(char *io) {
 }
 
 static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
-    char buf[BUFSIZE];
     uint32_t rnd_packets_in = (ipcount->packets_in + storage__intervald2) / storage__interval;
     uint64_t rnd_bytes_in = (ipcount->u.bytes_in + storage__intervald2) / storage__interval;
     uint32_t rnd_packets_out = (ipcount->packets_out + storage__intervald2) / storage__interval;
@@ -253,7 +356,27 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
     if (rnd_packets_in != 0 || rnd_bytes_in != 0 || rnd_packets_out != 0 || rnd_bytes_out != 0)
 #endif /* DONT_STORE_ZERO_ENTRIES */
     {
-	/* Include select that checks whether IP is in range */
+#ifdef USE_PREPARED_STATEMENTS
+	/* Set values in the locations that the prepared statement will be looking at */
+	storage__mysqldataip = ip;
+	storage__mysqldata.vlan = ipcount->vlan;
+	storage__mysqldata.packets_in = rnd_packets_in;
+	storage__mysqldata.u.bytes_in = rnd_bytes_in;
+	storage__mysqldata.packets_out = rnd_packets_out;
+	storage__mysqldata.bytes_out = rnd_bytes_out;
+
+	if (mysql_stmt_execute(storage__mysqlps) != 0) {
+	    fprintf(stderr, "mysql_stmt_execute: %s\n", mysql_stmt_error(storage__mysqlps));
+	    return;
+	}
+#ifdef PRINT_EVERY_PACKET
+	assert(mysql_stmt_affected_rows(storage__mysqlps) == 1);
+	fprintf(stderr, "storage__write_ip: ip %" SCNu32 " written\n", ip); /* XXX */
+#endif
+#else /* !USE_PREPARED_STATEMENTS */
+	char buf[BUFSIZ];
+
+	/* Include SELECT that checks whether IP is in range */
 	sprintf(
 	    buf,
 	    "INSERT INTO sample_tbl (unixtime,node_id,vlan_id,ip,in_pps,in_bps,out_pps,out_bps) "
@@ -277,5 +400,6 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
 	assert(mysql_affected_rows(storage__mysql) == 1);
 	fprintf(stderr, "storage__write_ip: %s\n", buf);
 #endif
+#endif /* !USE_PREPARED_STATEMENTS */
     }
 }
