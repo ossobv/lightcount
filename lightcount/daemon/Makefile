@@ -20,36 +20,28 @@ clean:
 	@rm -r bin
 
 lightcount:
-	APPNAME="$@" \
-	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer util" \
-	CPPFLAGS="$(CPPFLAGS)" \
-	CFLAGS="$(CFLAGS) -g -O3" \
-	LDFLAGS="$(LDFLAGS) -g" \
+	APPNAME="$@" CPPFLAGS="$(CPPFLAGS)" \
+	CFLAGS="$(CFLAGS) -g -O3" LDFLAGS="$(LDFLAGS) -g"
+	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer_nsleep util" \
 	$(MAKE) bin/$@
 
 lightcount-nodebug:
-	APPNAME="$@" \
-	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer util" \
-	CPPFLAGS="$(CPPFLAGS) -DNDEBUG" \
-	CFLAGS="$(CFLAGS) -O3" \
-	LDFLAGS="$(LDFLAGS)" \
+	APPNAME="$@" CPPFLAGS="$(CPPFLAGS) -DNDEBUG" \
+	CFLAGS="$(CFLAGS) -O3" LDFLAGS="$(LDFLAGS) -O3" \
+	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer_nsleep util" \
 	$(MAKE) bin/$@
 	@strip bin/$@
 
 lightcount-verbose:
-	APPNAME="$@" \
-	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer util" \
-	CPPFLAGS="$(CPPFLAGS) -DDEBUG -DPRINT_EVERY_PACKET" \
-	CFLAGS="$(CFLAGS) -g -O0" \
-	LDFLAGS="$(LDFLAGS) -g" \
+	APPNAME="$@" CPPFLAGS="$(CPPFLAGS) -DDEBUG -DPRINT_EVERY_PACKET" \
+	CFLAGS="$(CFLAGS) -g -O0" LDFLAGS="$(LDFLAGS) -g" \
+	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer_nsleep util" \
 	$(MAKE) bin/$@
 
 lightcount-test-output:
-	APPNAME="$@" \
-	MODULES="lightcount memory_testlive sniff_packsock storage_my timer util" \
-	CPPFLAGS="$(CPPFLAGS) -DDEBUG -DINTERVAL_SECONDS=5" \
-	CFLAGS="$(CFLAGS) -g -O0" \
-	LDFLAGS="$(LDFLAGS) -g" \
+	APPNAME="$@" CPPFLAGS="$(CPPFLAGS) -DDEBUG -DINTERVAL_SECONDS=0" \
+	CFLAGS="$(CFLAGS) -g -O0" LDFLAGS="$(LDFLAGS) -g" \
+	MODULES="lightcount memory_testlive sniff_dummy storage_my timer_oneshot util" \
 	$(MAKE) bin/$@
 
 

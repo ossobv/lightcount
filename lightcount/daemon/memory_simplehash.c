@@ -35,6 +35,7 @@ static void memory__add_one(void *memory, uint32_t ip, uint16_t vlan, uint16_t l
 static void memory__dump_ipcount(uint32_t ip, struct ipcount_t *ipc);
 #endif
 
+
 void memory_help() {
     printf(
         "/********************* module: memory (simple_hash) ***************************/\n"

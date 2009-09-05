@@ -18,7 +18,6 @@ along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 ======================================================================*/
 
 #include "lightcount.h"
-#include <assert.h>
 #include <stdio.h>
 
 

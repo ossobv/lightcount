@@ -32,6 +32,7 @@ along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 # include <unistd.h>
 #endif /* !(_BSD_SOURCE || _XOPEN_SOURCE >= 500) */
 
+
 /* Fix non-bsd signal(2) behaviour when sigaction(2) is unavailable */
 #if !(__USE_POSIX || __USE_BSD)
 # ifndef _NSIG
@@ -45,7 +46,6 @@ void util__signal_helper(int signum) {
 	perror("signal");
 }
 #endif /* !(__USE_POSIX || __USE_BSD) */
-
 
 void util_get_safe_node_name(char *dst, size_t len) {
     struct utsname uname_info;

@@ -27,7 +27,6 @@ NOTE: Its your job to put the interfaces in promiscuous mode.
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <net/if.h>
-#include <assert.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>

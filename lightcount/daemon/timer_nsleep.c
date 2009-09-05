@@ -20,7 +20,6 @@ along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 #include "lightcount.h"
 #include <sys/time.h>
 #include <pthread.h>
-#include <setjmp.h>
 #include <signal.h>
 #include <stdio.h>
 #include <time.h>
@@ -28,7 +27,7 @@ along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 
 /* Settings */
 #ifndef INTERVAL_SECONDS
-#   define INTERVAL_SECONDS 300		/* run the storage engine every N seconds */
+#   define INTERVAL_SECONDS 300		/* wake the storage engine every N seconds */
 #endif /* INTERVAL_SECONDS */
 
 
@@ -39,6 +38,7 @@ static volatile int timer__done;	/* whether we're done */
 
 
 static void *timer__run(void *thread_arg);
+
 
 void timer_help() {
     printf(

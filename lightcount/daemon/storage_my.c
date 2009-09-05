@@ -27,6 +27,7 @@ along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 #define DONT_STORE_ZERO_ENTRIES 1	    /* delete all entries with all values zero */
 #define BUFSIZE 2048			    /* all sprintfs below are calculated to fit in this */
 
+
 static char const *storage__config_file;    /* configuration file name */
 static MYSQL *storage__mysql;		    /* gets reinitialized every write */
 static int storage__node_id;		    /* may vary per write */
