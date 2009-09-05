@@ -21,21 +21,21 @@ clean:
 
 lightcount:
 	APPNAME="$@" CPPFLAGS="$(CPPFLAGS)" \
-	CFLAGS="$(CFLAGS) -g -O3" LDFLAGS="$(LDFLAGS) -g"
-	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer_nsleep util" \
+	CFLAGS="$(CFLAGS) -g -O3" LDFLAGS="$(LDFLAGS) -g" \
+	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer_interval util" \
 	$(MAKE) bin/$@
 
 lightcount-nodebug:
 	APPNAME="$@" CPPFLAGS="$(CPPFLAGS) -DNDEBUG" \
 	CFLAGS="$(CFLAGS) -O3" LDFLAGS="$(LDFLAGS) -O3" \
-	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer_nsleep util" \
+	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer_interval util" \
 	$(MAKE) bin/$@
 	@strip bin/$@
 
 lightcount-verbose:
 	APPNAME="$@" CPPFLAGS="$(CPPFLAGS) -DDEBUG -DPRINT_EVERY_PACKET" \
 	CFLAGS="$(CFLAGS) -g -O0" LDFLAGS="$(LDFLAGS) -g" \
-	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer_nsleep util" \
+	MODULES="lightcount memory_simplehash sniff_packsock storage_my timer_interval util" \
 	$(MAKE) bin/$@
 
 lightcount-test-output:

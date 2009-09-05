@@ -53,7 +53,7 @@ void timer_help() {
 	"to tell the storage engine to write averages. After waking the storage engine\n"
 	"it exits.\n"
 	"\n"
-	"This differs from the n_sleep timer in that it (1) does not align the times, it\n"
+	"This differs from the interval timer in that it (1) does not align the times, it\n"
 	"just waits the specified amount of time once and (2) can tell the storage engine\n"
 	"that the interval was FAKE_INTERVAL_SECONDS long.\n"
 	"\n"
