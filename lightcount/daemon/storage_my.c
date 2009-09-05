@@ -249,37 +249,33 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
     uint32_t rnd_packets_out = (ipcount->packets_out + storage__intervald2) / storage__interval;
     uint64_t rnd_bytes_out = (ipcount->bytes_out + storage__intervald2) / storage__interval;
 
-    /* Include select that checks whether IP is in range */
-    sprintf(
-	buf,
-	"INSERT INTO sample_tbl (unixtime,node_id,vlan_id,ip,in_pps,in_bps,out_pps,out_bps) "
-	"SELECT "
-	    "%" SCNu32 ",%i,%" SCNu16 ",%" SCNu32 ","
-	    "%" SCNu32 ",%" SCNu64 ",%" SCNu32 ",%" SCNu64 " "
-	"FROM DUAL WHERE EXISTS ("
-	    "SELECT ip_begin FROM ip_range_tbl "
-	    "WHERE ip_begin <= %" SCNu32 " AND %" SCNu32 " <= ip_end"
-	    " AND (node_id IS NULL OR node_id = %i)"
 #ifdef DONT_STORE_ZERO_ENTRIES
-	    " AND (%" SCNu32 " <> 0 OR %" SCNu64 " <> 0 "
-	    " OR %" SCNu32 " <> 0 OR %" SCNu64 " <> 0)"
+    if (rnd_packets_in != 0 || rnd_bytes_in != 0 || rnd_packets_out != 0 || rnd_bytes_out != 0)
 #endif /* DONT_STORE_ZERO_ENTRIES */
-	")",
-	storage__unixtime_begin, storage__node_id, ipcount->vlan, ip,
-	rnd_packets_in, rnd_bytes_in, rnd_packets_out, rnd_bytes_out,
-	ip, ip, storage__node_id
-#ifdef DONT_STORE_ZERO_ENTRIES
-	, rnd_packets_in, rnd_bytes_in, rnd_packets_out, rnd_bytes_out
-#endif /* DONT_STORE_ZERO_ENTRIES */
-    ); /* 23 args * len("18446744073709551615") is still only 460 (FIXME) */
-    if (mysql_query(storage__mysql, buf)) {
-	fprintf(stderr, "mysql_query: %s\n", mysql_error(storage__mysql));
-	return;
-    }
+    {
+	/* Include select that checks whether IP is in range */
+	sprintf(
+	    buf,
+	    "INSERT INTO sample_tbl (unixtime,node_id,vlan_id,ip,in_pps,in_bps,out_pps,out_bps) "
+	    "SELECT "
+		"%" SCNu32 ",%i,%" SCNu16 ",%" SCNu32 ","
+		"%" SCNu32 ",%" SCNu64 ",%" SCNu32 ",%" SCNu64 " "
+	    "FROM DUAL WHERE EXISTS ("
+		"SELECT ip_begin FROM ip_range_tbl "
+		"WHERE ip_begin <= %" SCNu32 " AND %" SCNu32 " <= ip_end"
+		" AND (node_id IS NULL OR node_id = %i)"
+	    ")",
+	    storage__unixtime_begin, storage__node_id, ipcount->vlan, ip,
+	    rnd_packets_in, rnd_bytes_in, rnd_packets_out, rnd_bytes_out,
+	    ip, ip, storage__node_id
+	); /* 23 args * len("18446744073709551615") is still only 460 (FIXME) */
+	if (mysql_query(storage__mysql, buf)) {
+	    fprintf(stderr, "mysql_query: %s\n", mysql_error(storage__mysql));
+	    return;
+	}
 #ifdef PRINT_EVERY_PACKET
-    if (mysql_affected_rows(storage__mysql) >= 1) {
 	assert(mysql_affected_rows(storage__mysql) == 1);
-        fprintf(stderr, "storage__write_ip: %s\n", buf);
-    }
+	fprintf(stderr, "storage__write_ip: %s\n", buf);
 #endif
+    }
 }
