@@ -64,6 +64,28 @@ void memory_enum(void *memory, memory_enum_cb cb) {
 	cb(memory__testdata[i+1], &data);
     }
 }
+
+/**
+ * This testdata was gathered when using the first generation storage_my which
+ * employs the following query to insert new values in de database:
+ *
+ * INSERT INTO sample_tbl
+ * (unixtime,node_id,vlan_id,ip,in_pps,in_bps,out_pps,out_bps)
+ * SELECT 1252073100,6,131,1539638616,
+ * ROUND(0/300),ROUND(0/300),ROUND(2/300),ROUND(140/300)
+ * FROM DUAL WHERE EXISTS (SELECT ip_begin
+ * FROM ip_range_tbl WHERE ip_begin <= 1539638616 AND 1539638616 <= ip_end
+ * AND (node_id IS NULL OR node_id = 6) AND (ROUND(0/300)<>0
+ * OR ROUND(0/300)<>0 OR ROUND(2/300)<>0 OR ROUND(140/300)<>0));
+ *
+ * There are several things to optimize here:
+ * - We can query the ip_range_tbl data first, and filter before sending to
+ *   the database.
+ * - We can filter early by doing the ROUND ourselves (very possibly much
+ *   cheaper than the MySQL round, using integers only).
+ * - We can use prepared statements where only the variable parts (skipping
+ *   node_id and unixtime) have to be sent.
+ */
 	    
 unsigned memory__testdata[] = {
     131,1539638616,0,0,2,140,
