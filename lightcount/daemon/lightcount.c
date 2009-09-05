@@ -53,7 +53,7 @@ int main(int argc, char const *const *argv) {
 
     /* Initialize updater thread */
     timer_loop_bg(memory[0], memory[1]);
-        
+
     /* Start the main loop (ends on INT/HUP/TERM/QUIT or error) */
     sniff_loop(socket, memory[0], memory[1]);
 
@@ -71,7 +71,7 @@ int main(int argc, char const *const *argv) {
 void lightcount_help() {
     printf(
 	"Usage: lightcount IFACE CONFIGFILE\n"
-        "Captures IP traffic on the specified interface and stores the average packet\n"
+	"Captures IP traffic on the specified interface and stores the average packet\n"
 	"and length counts.\n"
 	"\n"
     );

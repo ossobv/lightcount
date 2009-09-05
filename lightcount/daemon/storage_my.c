@@ -24,6 +24,7 @@ along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <string.h>
 
+/* Settings */
 #define DONT_STORE_ZERO_ENTRIES 1	    /* delete all entries with all values zero */
 #define USE_PREPARED_STATEMENTS 1	    /* use MySQL prepared statements */
 #define BUFSIZE 2048			    /* all sprintfs below are calculated to fit in this */
@@ -172,7 +173,7 @@ static int storage__db_connect() {
 				  storage__conf_dbase, storage__conf_port,
 				  NULL, 0) == NULL) {
 	if (storage__mysql != NULL)
-	     mysql_close(storage__mysql);
+	    mysql_close(storage__mysql);
 	fprintf(stderr, "mysql_init/mysql_real_connect: %s\n", mysql_error(storage__mysql));
 	return -1;
     }
@@ -181,7 +182,7 @@ static int storage__db_connect() {
 
 static void storage__db_disconnect() {
     if (storage__mysql != NULL) {
-        mysql_close(storage__mysql);
+	mysql_close(storage__mysql);
 	storage__mysql = NULL;
     }
 }
@@ -380,12 +381,12 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
 	    storage__db_prepstmt_end();
 	    return;
 	}
-#ifdef PRINT_EVERY_PACKET
+#   ifdef PRINT_EVERY_PACKET
 	if (mysql_stmt_affected_rows(storage__mysqlps) >= 1) {
 	    assert(mysql_stmt_affected_rows(storage__mysqlps) == 1);
 	    fprintf(stderr, "storage__write_ip: Data stored for IP %" SCNu32 "\n", ip);
 	}
-#endif /* PRINT_EVERY_PACKET */
+#   endif /* PRINT_EVERY_PACKET */
 #else /* !USE_PREPARED_STATEMENTS */
 	char buf[BUFSIZ];
 
@@ -414,12 +415,12 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
 	    storage__db_disconnect();
 	    return;
 	}
-#ifdef PRINT_EVERY_PACKET
+#   ifdef PRINT_EVERY_PACKET
 	if (mysql_affected_rows(storage__mysql) >= 1) {
 	    assert(mysql_affected_rows(storage__mysql) == 1);
 	    fprintf(stderr, "storage__write_ip: %s\n", buf);
 	}
-#endif /* PRINT_EVERY_PACKET */
+#   endif /* PRINT_EVERY_PACKET */
 #endif /* !USE_PREPARED_STATEMENTS */
     }
 }

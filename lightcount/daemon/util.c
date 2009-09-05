@@ -89,7 +89,7 @@ int util_signal_set(int signum, void (*handler)(int)) {
     action.sa_flags = 0;
     if ((ret = sigaction(signum, &action, NULL)) != 0) {
 	perror("sigaction");
-        return -1;
+	return -1;
     }
 #else
 # ifndef __USE_BSD
@@ -115,7 +115,7 @@ char *util_inet_htoa(uint32_t ip4) {
 	static_buf,
 	"%" SCNu8 ".%" SCNu8 ".%" SCNu8 ".%" SCNu8,
 #if BYTE_ORDER == LITTLE_ENDIAN
-        ip48[3], ip48[2], ip48[1], ip48[0]
+	ip48[3], ip48[2], ip48[1], ip48[0]
 #elif BYTE_ORDER == BIG_ENDIAN
 	ip48[0], ip48[1], ip48[2], ip48[3]
 #endif

@@ -38,7 +38,7 @@ static void memory__dump_ipcount(uint32_t ip, struct ipcount_t *ipc);
 
 void memory_help() {
     printf(
-        "/********************* module: memory (simple_hash) ***************************/\n"
+	"/********************* module: memory (simple_hash) ***************************/\n"
 	"#define HASHBITS %" SCNu32 "\n"
 	"#define BUCKETS %" SCNu32 "\n"
 	"\n"
@@ -83,7 +83,8 @@ void memory_free(void *memory) {
 
 void memory_add(void *memory, uint32_t src, uint32_t dst, uint16_t vlan, uint16_t len) {
 #if PRINT_EVERY_PACKET
-    fprintf(stderr, "memory_add: 0x%08" PRIx32 " > 0x%08" PRIx32 " (len=%" SCNu16 ",vlan=%" SCNu16 ").\n", src, dst, len, vlan);
+    fprintf(stderr, "memory_add: 0x%08" PRIx32 " > 0x%08" PRIx32 " "
+	    "(len=%" SCNu16 ",vlan=%" SCNu16 ").\n", src, dst, len, vlan);
 #endif
     memory__add_one(memory, src, vlan, len, 1); /* src == output */
     memory__add_one(memory, dst, vlan, len, 0); /* dst == input */
@@ -156,7 +157,8 @@ static void memory__add_one(void *memory, uint32_t ip, uint16_t vlan, uint16_t l
     /* We haven't returned.. memory must be full. We use BUCKET+1 to store a pointer to more memory. */
     if (mem->u.more_memory == NULL) {
 #ifndef NDEBUG
-        fprintf(stderr, "memory_add_one: Buckets are full for IP 0x%08" PRIx32 ". Alloc'ing %" SCNu64 " bytes mem.\n",
+	fprintf(stderr, "memory_add_one: Buckets are full for IP 0x%08" PRIx32 ". "
+		"Alloc'ing %" SCNu64 " bytes mem.\n",
 		ip, (uint64_t)sizeof(struct ipcount_t) * (1 << (32 - HASHBITS)));
 #endif
 	mem->u.more_memory = calloc(sizeof(struct ipcount_t), 1 << (32 - HASHBITS));

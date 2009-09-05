@@ -17,11 +17,6 @@ You should have received a copy of the GNU General Public License
 along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 ======================================================================*/
 
-/*
-NOTE: Raise SIGUSR1 when you want it to switch memory.
-NOTE: Its your job to put the interfaces in promiscuous mode.
-*/
-
 #include "lightcount.h"
 #include "endian.h"
 #include <sys/socket.h>
@@ -58,14 +53,14 @@ struct sniff_ether {
 /* IP header */
 struct sniff_ip {
     uint8_t hl:4,	    /* header length */
-	     ver:4;	    /* version */
+	    ver:4;	    /* version */
     uint8_t  tos;	    /* type of service */
     uint16_t len;	    /* total length */
     uint16_t id;	    /* identification */
     uint16_t off;	    /* fragment offset field */
-#define IP_RF 0x8000        /* reserved fragment flag */
-#define IP_DF 0x4000        /* dont fragment flag */
-#define IP_MF 0x2000        /* more fragments flag */
+#define IP_RF 0x8000	    /* reserved fragment flag */
+#define IP_DF 0x4000	    /* dont fragment flag */
+#define IP_MF 0x2000	    /* more fragments flag */
 #define IP_OFFMASK 0x1fff   /* mask for fragmenting bits */
     uint8_t  ttl;	    /* time to live */
     uint8_t  proto;	    /* protocol */
@@ -81,9 +76,6 @@ static volatile int sniff__done;    /* whether we're done */
 
 static void sniff__switch_memory(int signum);
 static void sniff__loop_done(int signum);
-#if 0
-static void sniff__test_memory_enum(uint32_t ip, struct ipcount_t const *ipcount);
-#endif
 
 
 void sniff_help() {
@@ -165,6 +157,9 @@ void sniff_loop(int packet_socket, void *memory1, void *memory2) {
     util_signal_set(SIGQUIT, sniff__loop_done);
     util_signal_set(SIGTERM, sniff__loop_done);
 
+    /* FIXME: Put the interfaces in promiscuous mode.. you must do this
+     * by hand for now (/sbin/ip link set eth0 up promisc on). */
+
 #ifndef NDEBUG
     fprintf(stderr, "sniff_loop: Starting loop (mem %p/%p).\n", sniff__memory[0], sniff__memory[1]);
 #endif
@@ -199,7 +194,7 @@ void sniff_loop(int packet_socket, void *memory1, void *memory2) {
     } while (errno == EINTR && !sniff__done);
     /* Check errors */
     if (!sniff__done)
-        perror("recvfrom");
+	perror("recvfrom");
 #ifndef NDEBUG
     else
 	fprintf(stderr, "sniff_loop: Ended loop at user/system request.\n");
@@ -215,10 +210,6 @@ void sniff_loop(int packet_socket, void *memory1, void *memory2) {
 }
 
 static void sniff__switch_memory(int signum) {
-#if 0
-    fprintf(stderr, "sniff__switch_memory: Listing memory %p:\n", sniff__memp);
-    memory_enum(sniff__memp, &sniff__test_memory_enum);
-#endif
     if (sniff__memp == sniff__memory[0])
 	sniff__memp = sniff__memory[1];
     else
@@ -231,20 +222,3 @@ static void sniff__switch_memory(int signum) {
 static void sniff__loop_done(int signum) {
     sniff__done = 1;
 }
-
-#if 0
-static void sniff__test_memory_enum(uint32_t ip, struct ipcount_t const *ipcount) {
-    uint8_t *ip8 = (uint8_t*)&ip;
-    fprintf(stderr, " * %" SCNu8 ".%" SCNu8 ".%" SCNu8 ".%" SCNu8
-	    " pktIO %" SCNu32 "/%" SCNu32 " bytesIO %" SCNu64 "/%" SCNu64 " vlan# %" SCNu16 "\n",
-#if BYTE_ORDER == LITTLE_ENDIAN
-	    ip8[3], ip8[2], ip8[1], ip8[0],
-#elif BYTE_ORDER == BIG_ENDIAN
-	    ip8[0], ip8[1], ip8[2], ip8[3],
-#else
-	    0, 0, 0, 0,
-#endif
-	    ipcount->packets_in, ipcount->packets_out, ipcount->u.bytes_in, ipcount->bytes_out,
-	    ipcount->vlan);
-}
-#endif

@@ -28,7 +28,7 @@ unsigned memory__testdata[215070];
 
 void memory_help() {
     printf(
-        "/********************* module: memory (test_live) *****************************/\n"
+	"/********************* module: memory (test_live) *****************************/\n"
 	"This memory module does not store any acquired data, but provides a pregenerated\n"
 	"set of data, fetched at a random time of day.\n"
 	"The test set should be reasonably adequate for testing purposes of the storage\n"

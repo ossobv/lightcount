@@ -133,6 +133,12 @@ void timer_loop_stop() {
 #ifndef NDEBUG
     fprintf(stderr, "timer_loop_stop: Thread %p joined.\n", (void*)timer__thread);
 #endif
+
+#if TIMER__METHOD == TIMER__METHOD_SEMAPHORE
+    /* Destroy semaphore */
+    if (sem_destroy(&timer__semaphore) != 0)
+	perror("sem_destroy");
+#endif /* TIMER__METHOD == TIMER__METHOD_SEMAPHORE */
 }
 
 /* The timers job is to run storage function after after every INTERVAL_SECONDS time. */
