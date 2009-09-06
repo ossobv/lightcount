@@ -206,7 +206,7 @@ static int storage__db_prepstmt_begin() {
 	    " AND (node_id IS NULL OR node_id = %i)"
 	")",
 	storage__unixtime_begin, storage__node_id, storage__node_id
-    ); /* 23 args * len("18446744073709551615") is still only 460 (FIXME) */
+    ); /* 240 bytes + 3 args is way smaller than BUFSIZE */
 
     if (mysql_stmt_prepare(storage__mysqlps, buf, strlen(buf)) != 0) {
 	fprintf(stderr, "mysql_stmt_prepare: %s\n", mysql_stmt_error(storage__mysqlps));
@@ -409,7 +409,7 @@ static void storage__write_ip(uint32_t ip, struct ipcount_t const *ipcount) {
 	    storage__unixtime_begin, storage__node_id, ipcount->vlan, ip,
 	    rnd_packets_in, rnd_bytes_in, rnd_packets_out, rnd_bytes_out,
 	    ip, ip, storage__node_id
-	); /* 23 args * len("18446744073709551615") is still only 460 (FIXME) */
+	); /* 240 bytes + 11 args * len("18446744073709551615") way smaller than BUFSIZE */
 	if (mysql_query(storage__mysql, buf)) {
 	    fprintf(stderr, "mysql_query: %s\n", mysql_error(storage__mysql));
 	    storage__db_disconnect();

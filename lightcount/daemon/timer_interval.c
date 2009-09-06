@@ -32,7 +32,7 @@ along with LightCount.  If not, see <http://www.gnu.org/licenses/>.
 
 #define TIMER__METHOD_NSLEEP 1
 #define TIMER__METHOD_SEMAPHORE 2
-#if !defined(TIMER_USE_NSLEEP) && (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600)
+#if !defined(USE_NSLEEP_TIMER) && (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600)
 #   define TIMER__METHOD TIMER__METHOD_SEMAPHORE
 #   include <errno.h>
 #   include <semaphore.h>
@@ -57,19 +57,19 @@ static void *timer__run(void *thread_arg);
 void timer_help() {
     printf(
 	"/********************* module: timer (interval) *******************************/\n"
-	"#%s TIMER_USE_NSLEEP\n"
+	"#%s USE_NSLEEP_TIMER\n"
 	"#define INTERVAL_SECONDS %" SCNu32 "\n"
 	"\n"
 	"Sleeps until the specified interval of %.2f minutes have passed and wakes up\n"
 	"to tell the storage engine to write averages.\n"
 	"\n"
-	"The TIMER_USE_NSLEEP define forces the module to use a polling sleep loop even\n"
+	"The USE_NSLEEP_TIMER define forces the module to use a polling sleep loop even\n"
 	"when the (probably) less cpu intensive and more accurate sem_timedwait()\n"
 	"function is available. The currently compiled in timer method is: %s\n"
 	"\n",
-#ifdef TIMER_USE_NSLEEP
+#ifdef USE_NSLEEP_TIMER
 	"define",
-#else /* !TIMER_USE_NSLEEP */
+#else /* !USE_NSLEEP_TIMER */
 	"undef",
 #endif
 	(uint32_t)INTERVAL_SECONDS, (float)INTERVAL_SECONDS / 60,
