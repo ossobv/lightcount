@@ -45,6 +45,7 @@ lightcount-test-output:
 	$(MAKE) bin/$@
 
 
+$(addprefix bin/.$(APPNAME)/, $(addsuffix .o, $(MODULES))): Makefile endian.h lightcount.h
 bin/.$(APPNAME)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(COMPILE.c) $< -o $@
