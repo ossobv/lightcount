@@ -26,7 +26,7 @@ class IbiFormatter(Formatter):
     ''' Formatter for Y-axis in ibi-unit/second. Passed to matplotlib set_major_formatter(). '''
 
     def __init__(self, unit):
-        ''' Supply a unit for the IbiPerSecondFormatter, like 'bit' or 'B' (for byte). '''
+        ''' Supply a unit for the IbiFormatter, like 'bit' or 'B' (for byte). '''
         self.unit = unit
 
     def __call__(self, x, pos=0):
