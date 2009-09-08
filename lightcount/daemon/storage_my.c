@@ -361,12 +361,13 @@ static int storage__ipfilter_begin() {
     MYSQL_ROW row;
     int ret;
 
-    /* Get an ordered list of the ip ranges. */
+    /* Get an ordered list of the ip ranges.
+     * Order by ip_begin so we can stop the linear search when ip_begin > ip. */
     sprintf(
 	buf,
 	"SELECT ip_begin, ip_end FROM ip_range_tbl "
 	"WHERE node_id IS NULL OR node_id = %d "
-	"ORDER BY ip_begin, ip_end",
+	"ORDER BY ip_begin",
 	storage__node_id
     );
     if (mysql_query(storage__mysql, buf)) {
@@ -411,11 +412,12 @@ static void storage__ipfilter_end() {
 
 static int storage__ipfilter_in_range(uint32_t ip) {
     uint32_t *pos;
-    /* We could optimize this by using a binary search.. it is an ordered
-     * list after all. */
+    /* Partial optimization by skipping rest of search when ip_begin > ip. */
     for (pos = storage__ipfilter_rbegin; pos != storage__ipfilter_rend; pos += 2) {
 	if (pos[0] <= ip && ip <= pos[1])
 	    return 1;
+	if (pos[0] > ip)
+	    return 0;
     }
     return 0;
 }
