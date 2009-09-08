@@ -64,6 +64,17 @@ FROM sample_tbl LEFT JOIN node_tbl USING (node_id);
 
 --
 -- Maintenance tip #1
+-- CREATING A WRITE ONLY ACCOUNT FOR THE DAEMON
+--
+
+-- CREATE USER 'traffic_w'@'%' IDENTIFIED BY 'somepassword';
+-- GRANT SELECT ON ip_range_tbl TO 'traffic_w'@'%';
+-- GRANT SELECT, INSERT ON node_tbl TO 'traffic_w'@'%';
+-- GRANT INSERT ON sample_tblTO 'traffic_w'@'%';
+
+
+--
+-- Maintenance tip #2
 -- REMOVING RECORDS THAT ARE NOT IN ip_range_tbl FROM sample_tbl
 --
 
