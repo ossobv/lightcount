@@ -1,20 +1,11 @@
 ========================================================================
-  BUGS (LightCount IP traffic counter)                   wjd, oct 2008
+  BUGS (LightCount IP traffic counter)                   wjd, sep 2009
 ========================================================================
 
   This document lists bugs and caveats. They can be bugs that I can fix,
 bugs that I don't know how to fix or caveats that you should keep in
 mind when hacking the code.
 
-
-------------------------------------------------------------------------
-  Daemon: timer.c is awake too often
-------------------------------------------------------------------------
-  timer.c uses N times sleep(1) to wait until INTERVAL_SECONDS has
-passed. Aborting sleep(N) through a signal or using alarm/pause does not
-not work properly. Aborting the sleep is necessary to cleanly shut the
-daemon down when the user feels like it (and not INTERVAL_SECONDS
-later).
 
 ------------------------------------------------------------------------
   Interface: time zone usage is fragile
@@ -30,9 +21,6 @@ objects.
 ------------------------------------------------------------------------
   Interface: minor issues
 ------------------------------------------------------------------------
-+ The graph shows only one 95th-percentile line. When you view a time
-  period that spans multiple months, you will see only the 95P line of
-  the first shown month.
 + When comparing multiple nodes, VLANs or IP addresses, you may see the
   bandwidth doubled. In comparison graphs -- those showing more than one
   line with IN and OUT -- the used bandwidth is a sum of the inbound and

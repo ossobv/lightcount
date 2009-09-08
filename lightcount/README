@@ -1,11 +1,11 @@
 ========================================================================
-  README (LightCount IP traffic counter)                 wjd, oct 2008
+  README (LightCount IP traffic counter)                 wjd, sep 2009
 ========================================================================
 
   LightCount is an IP traffic counter. It sniffs ethernet packets and
 stores average traffic counts for specified IP addresses.
 
-Copyright: Walter Doekes, OSSO B.V., 2008.
+Copyright: Walter Doekes, OSSO B.V., 2008,2009.
 Licensing: GPLv3, see COPYING for details.
 
 
