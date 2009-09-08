@@ -22,11 +22,15 @@ from matplotlib.dates import DateFormatter, MONDAY, \
         MinuteLocator, HourLocator, WeekdayLocator, MonthLocator, YearLocator
 
 
-class BitsPerSecondFormatter(Formatter):
-    ''' Formatter for Y-axis in bits/second. Passed to matplotlib set_major_formatter(). '''
+class IbiFormatter(Formatter):
+    ''' Formatter for Y-axis in ibi-unit/second. Passed to matplotlib set_major_formatter(). '''
+
+    def __init__(self, unit):
+        ''' Supply a unit for the IbiPerSecondFormatter, like 'bit' or 'B' (for byte). '''
+        self.unit = unit
 
     def __call__(self, x, pos=0):
-        ''' Returns "%(num)u %(letter)bits/s" dependent on number x. '''
+        ''' Returns "%(num)u %(letter)ibi-unit/s" dependent on number x. '''
         if x <= 1024:
             letter = ''
         elif x <= 1048576:
@@ -41,10 +45,10 @@ class BitsPerSecondFormatter(Formatter):
 
         # This feels like a non-optimal solution ;)
         if float(int(x)) == x:
-            return '%.f %sbit/s' % (x, letter)
+            return '%.f %s%s' % (x, letter, self.unit)
         elif float(int(x * 10)) == x * 10:
-            return '%.1f %sbit/s' % (x, letter)
-        return '%.2f %sbit/s' % (x, letter)
+            return '%.1f %s%s' % (x, letter, self.unit)
+        return '%.2f %s%s' % (x, letter, self.unit)
 
 
 class LinearBitsLocator(MultipleLocator):

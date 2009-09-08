@@ -187,7 +187,7 @@ def do_statgraph(data, period, options, stat=None, graph=None):
 
     if stat is not None:
         print 'Selected period (%s) between %s and %s:' % (period.get_period(), period.get_begin_date(), period.get_end_date())
-        bps_formatter = graphutil.BitsPerSecondFormatter()
+        bps_formatter = graphutil.IbiFormatter('bit/s')
         for result in result_list:
             print ' * %s:' % result.human_query
             t, i, o = result.get_max_io_bps()

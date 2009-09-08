@@ -163,7 +163,7 @@ class StandardGraph:
                     ax.set_ylim(ymin=0, ymax=8)
                 ax.yaxis.set_major_locator(graphutil.LinearBitsLocator(peak=ymax))
                 ax.yaxis.set_minor_locator(graphutil.LinearBitsLocator(peak=ymax, minor=True))
-            ax.yaxis.set_major_formatter(graphutil.BitsPerSecondFormatter()) 
+            ax.yaxis.set_major_formatter(graphutil.IbiFormatter('bit/s')) 
             ax.yaxis.set_ticks_position('right')
             for label in ax.get_yticklabels():
                 label.set_fontsize(10)
