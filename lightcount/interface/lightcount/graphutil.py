@@ -39,9 +39,12 @@ class IbiFormatter(Formatter):
         elif x <= 1073741824:
             x /= 1048576.0
             letter = 'M'
-        else:
+        elif x <= 1099511627776:
             x /= 1073741824.0
             letter = 'G'
+        else:
+            x /= 1099511627776.0
+            letter = 'T'
 
         # This feels like a non-optimal solution ;)
         if float(int(x)) == x:

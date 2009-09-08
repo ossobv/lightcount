@@ -361,6 +361,20 @@ class Data(object):
                 self.cache['billing_value'] = (yin95, yout95, estimate)
             return self.cache['billing_value']
 
+        def get_totals(self):
+            if 'totals' not in self.cache:
+                self.load_values()
+                totals = {'in_packets': 0, 'in_bytes': 0, 'out_packets': 0, 'out_bytes': 0}
+                for t, ip, op, ib, ob in self.values:
+                    if ip is not None: totals['in_packets'] += ip
+                    if ib is not None: totals['in_bytes'] += ib
+                    if op is not None: totals['out_packets'] += op
+                    if ob is not None: totals['out_bytes'] += ob
+                for k, v in totals.iteritems():
+                    totals[k] = v * lightcount.INTERVAL_SECONDS
+                self.cache['totals'] = totals
+            return self.cache['totals']
+
         def __str__(self):
             return '<result for query \'%s\' over period %s>' % (self.human_query, self.period)
 
